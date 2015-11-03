@@ -11,6 +11,7 @@ def error_f(alpha, p):
 
 
 class Pro_estimate():
+
     def __init__(self):
         self.alpha = 0
         self.beta = 0
@@ -22,6 +23,7 @@ class Pro_estimate():
         self.step_i = 0
         self.solve_function(self.p_pre)
         self.set_array()
+        self.dict_memory = {}
 
     def get_pro_r(self, pro_pre, n, m):
         if n > 100:
@@ -29,14 +31,20 @@ class Pro_estimate():
         if 0 == m:
             return (pro_pre)
         if (m != 0) and (abs(1.0 * n / m / pro_pre - 1) < 0.05):
-            return (0.5 * n / m + 0.5 * pro_pre)
+            return 0.5 * n / m + 0.5 * pro_pre
         else:
             if abs(pro_pre / self.p_pre - 1) < 0.01:
-                self.p_estimate = self.get_pro(n, m)
+                if self.dict_memory.get(str(m)+','+str(n), -1) == -1:  # 没有存储
+                    self.p_estimate = self.get_pro(n, m)
+                    self.dict_memory[str(m)+','+str(n)] = self.p_estimate
+                else:
+                    self.p_estimate = self.dict_memory[str(m)+','+str(n)]
             else:
                 self.solve_function(pro_pre)
                 self.set_array()
+                self.dict_memory = {}  # 清空记忆
                 self.p_estimate = self.get_pro(n, m)
+                self.dict_memory[str(m)+','+str(n)] = self.p_estimate
         return self.p_estimate
 
     def solve_function(self, p):

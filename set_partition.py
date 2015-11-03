@@ -1,13 +1,14 @@
 # coding=utf-8
 __author__ = '01053185'
 """
-功能：
-1.该代码实现测试集 与 学习集合的划分
+该代码实现功能：
+1.测试集 与 学习集合的划分
 2.测试集的输入文件构造
 3.构造学习集的输入文件
 """
 import os
 import random
+
 class StepOne():
     def __init__(self):
         self.data_dir_in = 'E:\\gitshell\\tianchi2'  # 输入文件夹

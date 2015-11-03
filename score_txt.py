@@ -9,12 +9,13 @@ __author__ = '01053185'
 class score_txt():
     def __init__(self):
         self.matrix_item = np.zeros((90000, 3), int)
+        self.data_dir = 'E:\\gitshell\\tianchi3'
         self.item_dict = {}
         self.ind1_dict = {}
         pass
 
     def read_jingyan(self):
-        opath = "E:\\gitshell\\tianchi2\\dim_fashion_matchsets2.txt"
+        opath = "E:\\gitshell\\tianchi3\\dim_fashion_matchsets2.txt"
         Read_stream = open(opath, "r")
         i_record = 0
         pre_ind1 = -1
@@ -63,9 +64,9 @@ class score_txt():
     def score_it(self, result_file="fm_submissions.txt"):
         self.read_jingyan()
         score_array = [0]*20
-        test_file = open(os.path.join(os.getcwd(),result_file), 'r')
+        test_file = open(os.path.join(self.data_dir,result_file), 'r')
         for line in test_file:
-            my_str = line.strip().split('\t')
+            my_str = line.strip().split(' ')
             item_id = int(my_str[0])
             relate_set = self.associated_items(item_id)
             iii = 0
@@ -78,5 +79,4 @@ class score_txt():
 
 if __name__ == "__main__":
     b = score_txt()
-    b.read_jingyan()
-    print b.associated_items(754750)
+    print b.score_it('fm_submissions21.txt')

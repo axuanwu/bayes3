@@ -9,13 +9,12 @@ from pro_estimate2 import Pro_estimate
 
 
 class most_like():
-
     def __init__(self):
-        self.data_dir = 'E:\\gitshell\\tianchi2'
+        self.data_dir = 'E:\\gitshell\\tianchi3'
         # 词组
         self.word_num = 0
         self.dict_word = {}
-        self.top_k_word = 20000  # 详细计算前20000的词组
+        self.top_k_word = 15000  # 详细计算前20000的词组
         self.word_M = np.zeros((1000000, 2))  # 第一列 记录word_id  第二列 记录 概率对数
         self.word_item_array = [""] * 1000000  # 每个词被哪些商品使用
         self.word_word = np.zeros((3, 3))
@@ -45,6 +44,7 @@ class most_like():
         pass
 
     def read_txt(self, filename="dim_items.txt"):
+        # 读取商品的类别信息表
         r_path = os.path.join(self.data_dir, filename)
         r_stream = open(r_path, 'r')
         self.item_num = 0
@@ -103,12 +103,12 @@ class most_like():
         sum_class_num = sum(self.class_M[:, 1])
         self.class_M[:, 1] = np.log(self.class_M[:, 1] / sum_class_num)
 
-    def result_word(self, file_name='test_items2.txt'):
-        # 找出需要计算的词汇
+    def result_word(self, file_name='test_set.txt'):
+        # 只对需要预测的商品进行计算 找出需要计算的词汇
         file_name = os.path.join(self.data_dir, file_name)
         r_stream = open(file_name, 'r')
         for line_i in r_stream:
-            item_id = int(line_i.strip())
+            item_id = int(line_i.strip().split('\t')[-1])
             self.test_item.append(item_id)
             item_ind = self.dict_item.get(item_id, -1)
             if item_ind == -1:
@@ -130,25 +130,16 @@ class most_like():
         for i in xrange(0, self.r_word_num):
             if self.r_word_M[i, 1] == 1:
                 i_record = i
+                print i_record
+
                 break
         self.r_word_num = i_record
         self.r_word_M = self.r_word_M[0:i_record, :]
 
-    # 返回一个词的所有 商品
-    def get_item_array(self, word_id):
-        word_ind = self.dict_word.get(word_id, -1)
-        item_array = []
-        if word_ind == -1:
-            return item_array
-        else:
-            item_str = self.word_item_array[word_ind].split(',')
-            for item in item_str:
-                item_array.append(int(item))
-        return item_array
 
-     # 统计 类类 关系
+    # 统计 类类 关系
     def my_tongji2(self):
-        # 统计结果由 sql sever 完成后存为txt 这里直接读取 # 检查完毕
+        # 统计过程由 sql sever 完成后存为class_class.txt 这里直接读取 # 检查完毕
         r_path = os.path.join(self.data_dir, "class_class.txt")
         r_stream = open(r_path, 'r')
         self.class_class = np.zeros((self.class_num, self.class_num))
@@ -163,36 +154,36 @@ class most_like():
         # all_num = 6 # 商品总数
         # self.class_class[class_ind1, class_ind2] 存储 id1 类别 后面搭配 id2 类别的概率
         w_path1 = open(os.path.join(self.data_dir, "class_class1.txt"), 'w')
-        w_path2 = open(os.path.join(self.data_dir, "class_class2.txt"), 'w')
-        w_path3 = open(os.path.join(self.data_dir, "class_class3.txt"), 'w')
+        w_path2 = open(os.path.join(self.data_dir, "o_class_class2.txt"), 'w')  # 记录中间结果 用于测试
+        # w_path3 = open(os.path.join(self.data_dir, "o_class_class3.txt"), 'w')
         for ind1 in xrange(0, self.class_num):
             p_pre = np.exp(self.class_M[ind1, 1])  # 原假设： ind2 发生的概率
-            w_path3.writelines(str(p_pre) + '\t')
+            # w_path3.writelines(str(p_pre) + '\t')  # 记录原假设
             for ind2 in xrange(0, self.class_num):
                 p_pre = np.exp(self.class_M[ind2, 1])  # 原假设： ind2 发生的概率
                 if ind2 == self.class_num - 1:
                     w_path1.writelines(str(self.class_class[ind1, ind2]) + '\n')
                 else:
                     w_path1.writelines(str(self.class_class[ind1, ind2]) + '\t')
+                a = int(self.class_class[ind1, ind2])
                 self.class_class[ind1, ind2] = self.pro_guji.get_pro_r(p_pre,
                                                                        self.class_class[ind1, ind2],
                                                                        row_sum[ind1])  # ind1 条件下 ind2 的概率
-                if ind2 == self.class_num - 1:
-                    w_path2.writelines(str(self.class_class[ind1, ind2]) + '\n')
-                else:
-                    w_path2.writelines(str(self.class_class[ind1, ind2]) + '\t')
+                if ind1 == 1:
+                    w_path2.writelines(str(p_pre) + '\t' + str(self.class_class[ind1, ind2])+
+                                       '\t' +str(a) +'\t'+ str(row_sum[ind1]) + '\n')
         w_path1.close()
         w_path2.close()
-        w_path3.close()
+        # w_path3.close()
 
     # 统计词词关系 new 基于sql sever 处理过的文件开始统计 简化代码
     def my_tongji3(self):
-        split_ss = self.r_word_num
+        # split_ss = self.r_word_num
         temp_array = np.zeros((self.r_word_num + 1, self.top_k_word + 1))
         p_remain = sum(np.exp(self.word_M[self.top_k_word:, 1]))  # 残余项原始概率
         i_file = 0
         file_name = "word_word_pro"
-        r_path = os.path.join(self.data_dir, "wordstr_wordstr.txt")
+        r_path = os.path.join(self.data_dir, "learn_wordstr_wordstr0.txt")
         r_stream = open(r_path, 'r')
         for wor_str in r_stream:
             my_str = wor_str.strip().split('\t')
@@ -256,17 +247,17 @@ class most_like():
 
     # 根据热度重组商品矩阵
     def read_item_hot(self, write=True):
-        path = os.path.join(self.data_dir, 'dim_items2.txt')
+        path = os.path.join(self.data_dir, 'my_item_hot.txt')
         nums_array = np.array([0] * self.item_num)
         r_stream = open(path, 'r')
         for line_i in r_stream:
-            my_str = line_i.strip().split(' ')
+            my_str = line_i.strip().split('\t')
             item_id = int(my_str[0])
-            nums = int(my_str[3])
+            nums = int(my_str[-1])
             item_ind = self.dict_item[item_id]
             nums_array[item_ind] = nums
         r_stream.close()
-        a = np.argsort(-nums_array)
+        a = np.argsort(-nums_array)  # 降序排列
         self.item_M = self.item_M[a, :]
         for x in xrange(0, self.item_num):
             self.dict_item[int(self.item_M[x, 0])] = x
@@ -279,7 +270,7 @@ class most_like():
             w_stream.close()
 
 
-    # 搭配算法 主进程
+    # 搭配算法主进程
     def da_pei(self):
         file_name = os.path.join(self.data_dir, 'fm_submissions2_tag.txt')
         w_stream = open(file_name, 'w')
@@ -351,7 +342,7 @@ class most_like():
         pass
 
     # 仅仅计算出所有结果前6万商品的搭配结果
-    # 加入了 原始的搭配概率 0.006，在 搭配中由于这一直大家相同，所以无关紧要。
+    # 加入了 原始的搭配概率 0.0006，在 搭配中由于这一值大家相同，所以无关紧要，但在与python2中计算的概率融合时会有影响。
     # 这次会计算出前6万的搭配概率，供 my_python2 做 进一步筛查
     def da_pei2(self):
         file_name = os.path.join(self.data_dir, 'fm_submissions2_tag_m.txt')
@@ -427,12 +418,11 @@ if __name__ == "__main__":
     a.result_word()
     print 1
     a.my_tongji2()  # 统计 类类 关系
-    # # a.my_tongji3()  # 统计 词词 关系
-    # a.read_word_word()
-    # print 2
-    # a.my_tongji2()  # 统计 类类 关系
-    # a.read_item_hot()
-    # a.da_pei2()  #
-    # print 3
-    # # a.get_item_array(171811)
+    # a.my_tongji3()  # 统计 词词 关系
+    a.read_word_word()
+    print 2
+    a.read_item_hot()
+    a.da_pei2()  #
+    print 3
+    # a.get_item_array(171811)
 
