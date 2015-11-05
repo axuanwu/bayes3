@@ -361,6 +361,7 @@ class READ_Bought_History():
         temp_array1 = np.array([self.p_match] * (self.item_num + 1))  # 随机搭配的概率 假设
         temp_array1[0:self.top_k_da] = self.pro_da_pei  # 构造一个全长度的 搭配向量
         temp_array2 = result_array + self.temp_item_array_hot  # 构造一个全长的 发生向量(最优概率的近似)
+        result_array = temp_array2  #
         temp_array = temp_array1 * temp_array2  # 相乘
         my_orders1 = np.argsort(-temp_array)  # 预排序
         item_index = self.item_dict.get(item_id, -1)
