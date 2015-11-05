@@ -12,6 +12,8 @@ class score_txt():
         self.data_dir = 'E:\\gitshell\\tianchi3'
         self.item_dict = {}
         self.ind1_dict = {}
+        # 用于有无购买历史的划分
+        self.history_dict = {}
         pass
 
     def read_jingyan(self):
@@ -38,6 +40,12 @@ class score_txt():
                 self.ind1_dict[int(my_str[0])] = i_record - 1
                 pre_ind1 = int(my_str[0])
 
+    def read_some(self):
+        r_stream = open(os.path.join(self.data_dir, 'test_file.txt'), 'r')
+        for line in r_stream:
+            my_str = line.split('\t')
+            self.history_dict[int(my_str[0])] = 1
+        r_stream.close()
     # 输入item_id  输出搭配商品
     def associated_items(self, item_id):
         ind_str = self.item_dict.get(item_id, '')
@@ -63,20 +71,46 @@ class score_txt():
     # 统计结果
     def score_it(self, result_file="fm_submissions.txt"):
         self.read_jingyan()
-        score_array = [0]*20
+        score_array = [0]*20  # 存储总的
+        score_array1 = [0]*20  # 存储无购买历史的商品结果
+        sum1 = 0
+        i1 = 0
+        score_array2 = [0]*20  # 存储有购买历史的商品结果
+        sum2 = 0
+        i2 = 0
         test_file = open(os.path.join(self.data_dir,result_file), 'r')
+        i = 0
+        sum0 = 0
         for line in test_file:
+            i += 1
             my_str = line.strip().split(' ')
             item_id = int(my_str[0])
             relate_set = self.associated_items(item_id)
+            sum0 += len(relate_set)
             iii = 0
+            if self.history_dict.get(item_id,-1) == -1:
+                i2 += 1
+                sum2 += len(relate_set)
+            else:
+                i1 += 1
+                sum1 += len(relate_set)
             my_str2 = my_str[1].split(',')
             for x in my_str2:
                 if int(x) in relate_set:
                     score_array[int(iii/10)] += 1
+                    if self.history_dict.get(item_id,-1) == -1:
+                        score_array2[int(iii/10)] += 1
+                    else:
+                        score_array1[int(iii/10)] += 1
                 iii += 1
+        # print i, sum0, sum(score_array)
+        print i, sum0, sum(score_array), score_array
+        print i1, sum1, sum(score_array1), score_array1
+        print i2, sum2, sum(score_array2), score_array2
+
         return score_array
 
 if __name__ == "__main__":
     b = score_txt()
-    print b.score_it('fm_submissions21.txt')
+    b.read_some()
+    b.score_it('fm_submissions21.txt')

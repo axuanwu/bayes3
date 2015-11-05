@@ -38,7 +38,7 @@ class most_like():
         # 概率优化模块
         self.pro_guji = Pro_estimate()
         # 只考虑 最热的 6万 商品
-        self.item_top_k = 60000
+        self.item_top_k = 100000
         # 原始的搭配概率
         self.p_match = 0.0006  # 任意随机商品 搭配的概率
         pass
@@ -154,7 +154,7 @@ class most_like():
         # all_num = 6 # 商品总数
         # self.class_class[class_ind1, class_ind2] 存储 id1 类别 后面搭配 id2 类别的概率
         w_path1 = open(os.path.join(self.data_dir, "class_class1.txt"), 'w')
-        w_path2 = open(os.path.join(self.data_dir, "o_class_class2.txt"), 'w')  # 记录中间结果 用于测试
+        w_path2 = open(os.path.join(self.data_dir, "ceshi_class_class2.txt"), 'w')  # 记录中间结果 用于测试
         # w_path3 = open(os.path.join(self.data_dir, "o_class_class3.txt"), 'w')
         for ind1 in xrange(0, self.class_num):
             p_pre = np.exp(self.class_M[ind1, 1])  # 原假设： ind2 发生的概率
@@ -207,6 +207,7 @@ class most_like():
         # 求概率
         temp_array_sum = temp_array.sum(1)  # 按照行进行求和
         (row_num, col_num) = temp_array.shape
+        o_stream = open(os.path.join(self.data_dir, "ceshi_tongji3.txt"), 'w')
         for i_col in xrange(0, col_num):
             if i_col % 200 == 0:
                 print i_col, time.time()
@@ -215,11 +216,16 @@ class most_like():
             else:
                 p_pre = np.exp(self.word_M[i_col, 1])
             for i_row in xrange(0, row_num):
+                a = temp_array[i_row, i_col]
                 temp_array[i_row, i_col] = \
                     self.pro_guji.get_pro_r(p_pre,
                                             temp_array[i_row, i_col],
                                             temp_array_sum[i_row])  # p n m
+                if i_row == 1:
+                        o_stream.write(str(p_pre)+'\t'+str(temp_array[i_row, i_col])
+                                       +'\t'+str(a) +'\t'+str(temp_array_sum[i_row])+'\n')
         # 静态存储
+        o_stream.close()
         w_file = os.path.join(self.data_dir, file_name + str(i_file) + '.txt')
         w_stream = open(w_file, 'w')
         for i_row in xrange(0, row_num):
@@ -270,88 +276,25 @@ class most_like():
             w_stream.close()
 
 
-    # 搭配算法主进程
-    def da_pei(self):
-        file_name = os.path.join(self.data_dir, 'fm_submissions2_tag.txt')
-        w_stream = open(file_name, 'w')
-        iii = -1
-        for item_id in self.test_item:
-            iii += 1
-            if iii % 100 == 0:
-                print time.time(), iii
-            item_ind = self.dict_item[item_id]
-            word_str = self.item_word_array[item_ind]
-            class_id = self.item_M[item_ind, 1]  # 类别编号
-            class_ind = self.dict_class[class_id]  # 类别索引
-            # item_id == self.class_M[item_ind,0]
-            temp_result_array = np.zeros((self.item_num, 2))  # 第一列记录词组的意见，第二列记录类别的意见 概率乘 化作 加
-            class_pro = np.log(self.class_class[class_ind, :])  # 搭配时 该商品类别到各个类别的概率
-            class_pro2 = self.class_M[:, 1]  # 不搭配时 该商品类别到各个类别的概率
-            temp_word_pro = np.array([0.0] * (self.top_k_word + 1))  # 该商品词组到各个词组的概率
-            word_num = 0
-            word_str_array = word_str.split(',')
-            # 获得该商品后 其他商品的输出概率
-            for word_id in word_str_array:
-                try:
-                    word_id2i = int(word_id)
-                except:
-                    continue
-                word_ind1 = self.r_dict_word.get(word_id2i, -1)
-                if word_ind1 == -1:
-                    continue  # 非统计对象
-                word_ind1 = min(word_ind1, self.r_word_num)
-                temp_word_pro += np.log(self.word_word[word_ind1, :])  # word_word 记录的是 真实概率
-                word_num += 1
-            if word_num == 0:
-                temp_word_pro = self.word_M[:, 1]
-            else:
-                temp_word_pro *= (1.0 / word_num)  # 搭配 平均词意见
-            temp_word_pro2 = self.word_M[:, 1]  # 不搭配 意见
-            for item_ind in xrange(0, self.item_top_k):
-                word_str = self.item_word_array[item_ind]
-                class_id = self.item_M[item_ind, 1]
-                class_ind00 = self.dict_class[int(class_id)]
-                temp_result_array[item_ind, 1] = class_pro[class_ind00] - class_pro2[class_ind00]  # 其exp 为搭配是 不搭配的倍数
-                if word_str == "":
-                    continue
-                word_str = word_str.split(',')
-                word_num2 = 0
-                for word_id2 in word_str:
-                    word_ind2 = self.dict_word.get(int(word_id2), -1)
-                    if word_ind2 == -1:
-                        continue
-                    word_ind2 = min(word_ind2, self.top_k_word)
-                    temp_result_array[item_ind, 0] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
-                    word_num2 += 1
-                if word_num2 == 0:
-                    temp_result_array[item_ind, 0] = 0
-                else:
-                    temp_result_array[item_ind, 0] *= (1.0 / word_num2)
-            a = temp_result_array[:, 0] + temp_result_array[:, 1]  # 类别的意见， 加上词的意见
-            my_order = np.argsort(-a)  # 降序排序 并输出
-            # 找出前6百个 按照热度进行排名 将 前 200 个 写入文件
-            top_top_k = 400  # 重要参数
-            temp_rrr = np.zeros((top_top_k, 2))
-            for i in xrange(0, top_top_k):
-                temp_rrr[i, :] = [self.item_M[my_order[i], 0], my_order[i]]
-            my_order = np.argsort(temp_rrr[:, 1])  # 按照序号排名  即热度
-            result_str = str(item_id) + ' ' + str(int(temp_rrr[my_order[0], 0]))
-            for i in xrange(1, 200):
-                result_str += ',' + str(int(temp_rrr[my_order[i], 0]))
-            w_stream.writelines(result_str + '\n')
-        pass
 
     # 仅仅计算出所有结果前6万商品的搭配结果
     # 加入了 原始的搭配概率 0.0006，在 搭配中由于这一值大家相同，所以无关紧要，但在与python2中计算的概率融合时会有影响。
     # 这次会计算出前6万的搭配概率，供 my_python2 做 进一步筛查
     def da_pei2(self):
         file_name = os.path.join(self.data_dir, 'fm_submissions2_tag_m.txt')
+        file_name2 = os.path.join(self.data_dir, 'fm_submissions2_tag_c.txt')  # class 意见
+        file_name1 = os.path.join(self.data_dir, 'fm_submissions2_tag_w.txt')  # word 意见
         w_stream = open(file_name, 'w')
+        w_stream1 = open(file_name1, 'w')
+        w_stream2 = open(file_name2, 'w')
         iii = -1
+        t_b = time.time()
         for item_id in self.test_item:
             iii += 1
-            if iii % 100 == 0:
-                print time.time(), iii
+            t_n = time.time()
+            if iii % 100 == 0 or t_n>t_b+100:
+                t_b = t_n
+                print t_n, iii
             item_ind = self.dict_item[item_id]
             word_str = self.item_word_array[item_ind]
             class_id = self.item_M[item_ind, 1]  # 类别编号
@@ -407,8 +350,12 @@ class most_like():
             for item_ind in xrange(0, self.item_top_k):
                 if item_ind != (self.item_top_k - 1):
                     w_stream.writelines(str(round(pro_a[item_ind], 9)) + '\t')
+                    w_stream1.writelines(str(round(np.exp(temp_result_array[item_ind, 0]), 9)) + '\t')
+                    w_stream2.writelines(str(round(np.exp(temp_result_array[item_ind, 1]), 9)) + '\t')
                 else:
                     w_stream.writelines(str(round(pro_a[item_ind], 9)) + '\n')
+                    w_stream1.writelines(str(round(np.exp(temp_result_array[item_ind, 0]), 9)) + '\n')
+                    w_stream2.writelines(str(round(np.exp(temp_result_array[item_ind, 1]), 9)) + '\n')
         w_stream.close()
 
 
@@ -422,6 +369,7 @@ if __name__ == "__main__":
     a.read_word_word()
     print 2
     a.read_item_hot()
+    print 3
     a.da_pei2()  #
     print 3
     # a.get_item_array(171811)
