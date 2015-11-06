@@ -1,13 +1,14 @@
 # coding=utf-8
 __author__ = '01053185'
 import os
-import numpy as np
 import time
 import datetime
-# from pro_estimate import Pro_estimate
-import pro_estimate2 as pro_es2
 import math
-# from yewu_jingyan import exp_of_people
+from class_opinion import class_gailv
+import numpy as np
+
+import pro_estimate2 as pro_es2
+
 
 
 class READ_Bought_History():
@@ -54,6 +55,13 @@ class READ_Bought_History():
         # 原始的搭配概率
         self.p_match = 0.0006
         self.class_class = 0
+        #  引入第一种提问方式的 类别意见
+        self.my_cgailv = class_gailv()
+        self.my_cgailv.read_txt()
+        self.my_cgailv.my_tongji2()
+        self.pre_class_gailv = []  # 记忆缓存
+        self.pre_class_id = -1  # 记忆缓存
+
 
     def read_history(self):
         # 将购买物品
@@ -297,6 +305,7 @@ class READ_Bought_History():
 
     # 找到某一商品后面其他商品的出现概率
     def item_2_item(self, item_id, user_str):
+        # 返回折合关联次数
         if user_str[0:2] == '-1':
             result_array = np.array([0.0] * (self.item_num + 1))
         else:
@@ -360,6 +369,16 @@ class READ_Bought_History():
         i_temp_result = 0
         temp_array1 = np.array([self.p_match] * (self.item_num + 1))  # 随机搭配的概率 假设
         # temp_array1[0:self.top_k_da] = self.pro_da_pei  # 构造一个全长度的 搭配向量
+        item_index = self.item_dict.get(item_id, 0)  # 商品存储位置编号
+        class_id1 = int(self.item_class[item_index])
+        if class_id1 == self.pre_class_id and class_id1 != -1:  # 和前一次相同
+            temp_array1 = self.pre_class_gailv
+        else:
+            for item_index in xrange(0, (self.item_num + 1)):
+                class_id2 = int(self.item_class[item_index])
+                temp_array1[item_index] = self.my_cgailv.get_gailv(class_id1, class_id2)
+            self.pre_class_id = class_id1
+            self.pre_class_gailv = temp_array1
         temp_array2 = result_array + self.temp_item_array_hot  # 构造一个全长的 发生向量(最优概率的近似)
         result_array = temp_array2  #
         array_sum = sum(result_array)  # 求和
@@ -375,8 +394,8 @@ class READ_Bought_History():
             temp_item_index = my_orders1[i_order]  # 商品的下标
             if self.item_class[temp_item_index] == class_id:  # 类别相同
                 continue
-            if self.pro_da_pei[i_order] < self.p_match:  # 小于基线
-                continue
+            # if self.pro_da_pei[i_order] < self.p_match:  # 小于基线
+            #     continue
             # temp_pro = pes.get_pro_r(self.temp_item_array_hot[temp_item_index]
             #                          , result_array[temp_item_index], array_sum)  # 发生的概率
             temp_pro = result_array[temp_item_index]/ array_sum  # 不考虑原假设
