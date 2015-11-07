@@ -1,6 +1,8 @@
 # coding=utf-8
 import os
 import numpy as np
+import time
+import scipy
 """
 对前两百的命中数进行统计
 """
@@ -14,7 +16,9 @@ class score_txt():
         self.ind1_dict = {}
         # 用于有无购买历史的划分
         self.history_dict = {}
-        pass
+        self.item_array = np.zeros((600000, 2))
+        self.top_k_da = 100000
+        self.item_dict2 = {}
 
     def read_jingyan(self):
         opath = "E:\\gitshell\\tianchi3\\dim_fashion_matchsets2.txt"
@@ -69,7 +73,7 @@ class score_txt():
             return set(asso_array)  # 去重
 
     # 统计结果
-    def score_it(self, result_file="fm_submissions.txt"):
+    def score_it(self, result_file="fm_submissions21.txt"):
         self.read_jingyan()
         score_array = [0]*20  # 存储总的
         score_array1 = [0]*20  # 存储无购买历史的商品结果
@@ -110,7 +114,73 @@ class score_txt():
 
         return score_array
 
+    def item_hot2(self):
+        # 读取文本分析中存储的商品顺序 确保商品存储位置完全一致
+        r_stream = open(os.path.join(self.data_dir, 'my_item_hot.txt'), 'r')
+        self.item_num = -1
+
+        for line in r_stream:
+            my_str = line.strip().split('\t')
+            self.item_num += 1
+            self.item_array[self.item_num, :] = [int(my_str[0]), int(my_str[1])]
+        self.item_array = self.item_array[0:(self.item_num + 1), ]
+        self.item_array[:, 1] = self.item_array[:, 1] / sum(self.item_array[:, 1])  # 记录次数 转为 记录概率
+        for x in xrange(0, self.item_num + 1):
+            self.item_dict2[int(self.item_array[x, 0])] = x
+
+    def score_it2(self, result_file="fm_submissions2_tag_m.txt"):
+        self.item_hot2()
+        self.read_jingyan()
+        score_array = [0] * 2000  # 存储总的
+        score_array1 = [0] * 2000  # 存储无购买历史的商品结果
+        sum1 = 0
+        i1 = 0
+        score_array2 = [0] * 2000  # 存储有购买历史的商品结果
+        sum2 = 0
+        i2 = 0
+        test_file = open(os.path.join(self.data_dir, result_file), 'r')
+        i = 0
+        sum0 = 0
+        step = 50
+        a = 0  # 记录热度在10万以外的搭配商品数
+        for line_s in test_file:
+            if i % 100 == 0:
+                print i, time.time()
+            my_str = line_s.split('\t')
+            item_id = int(my_str[0])
+            pro_da_pei = np.array([0.0] * self.top_k_da)
+            for x in xrange(1, self.top_k_da + 1):
+                pro_da_pei[x - 1] = float(my_str[x])
+            i += 1
+            # orders = np.argsort() #降排序
+            rank_0 = np.argsort(np.argsort(-pro_da_pei))
+            relate_set = self.associated_items(item_id)
+            sum0 += len(relate_set)
+            if self.history_dict.get(item_id, -1) == -1:
+                i2 += 1
+                sum2 += len(relate_set)
+            else:
+                i1 += 1
+                sum1 += len(relate_set)
+
+            for item_id2 in relate_set:
+                ind = self.item_dict2.get(item_id2, -1)
+                if ind == -1 or ind >= self.top_k_da:
+                    a += 1
+                    continue  # 不在命中外围
+                score_array[int(rank_0[ind] - 1) / step] += 1
+                if self.history_dict.get(item_id, -1) == -1:
+                    score_array2[int(rank_0[ind] - 1) / step] += 1
+                else:
+                    score_array1[int(rank_0[ind] - 1) / step] += 1
+        # print i, sum0, sum(score_array)
+        print i, sum0, sum(score_array), score_array
+        print i1, sum1, sum(score_array1), score_array1
+        print i2, sum2, sum(score_array2), score_array2
+        print a
+        return score_array
+
 if __name__ == "__main__":
     b = score_txt()
     b.read_some()
-    b.score_it('fm_submissions21.txt')
+    b.score_it2()
