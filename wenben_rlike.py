@@ -307,6 +307,7 @@ class most_like():
             word_num = 0
             word_str_array = word_str.split(',')
             # 获得该商品后 其他商品的输出概率
+            # temp_word_pro = self.word_M[:, 1]  # 原本的每个词的概率
             for word_id in word_str_array:
                 try:
                     word_id2i = int(word_id)
@@ -318,10 +319,6 @@ class most_like():
                 word_ind1 = min(word_ind1, self.r_word_num)
                 temp_word_pro += np.log(self.word_word[word_ind1, :])  # word_word 记录的是 真实概率
                 word_num += 1
-            if word_num == 0:
-                temp_word_pro = self.word_M[:, 1]
-            else:
-                temp_word_pro *= (1.0 / word_num)  # 搭配 平均词意见
             temp_word_pro2 = self.word_M[:, 1]  # 不搭配 意见
             for item_ind in xrange(0, self.item_top_k):
                 word_str = self.item_word_array[item_ind]
@@ -339,14 +336,14 @@ class most_like():
                     word_ind2 = min(word_ind2, self.top_k_word)
                     temp_result_array[item_ind, 0] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
                     word_num2 += 1
-                if word_num2 == 0:
-                    temp_result_array[item_ind, 0] = 0
-                else:
-                    temp_result_array[item_ind, 0] *= (1.0 / word_num2)
+                # temp_result_array[item_ind, 0] *= (1.0 / word_num2)
+                temp_result_array[item_ind, 0] *= 1
             a = temp_result_array[:, 0] + temp_result_array[:, 1]  # 类别的意见， 加上词的意见 a元素 中存储的是
             pro_a = self.p_match * np.exp(a) / (self.p_match * np.exp(a) + (1 - self.p_match) * 1)  # 得到各个商品 的概率
             # my_str00 = ""
             w_stream.writelines(str(item_id) + '\t')
+            w_stream1.writelines(str(item_id) + '\t')
+            w_stream2.writelines(str(item_id) + '\t')
             for item_ind in xrange(0, self.item_top_k):
                 if item_ind != (self.item_top_k - 1):
                     w_stream.writelines(str(round(pro_a[item_ind], 9)) + '\t')

@@ -128,7 +128,7 @@ class score_txt():
         for x in xrange(0, self.item_num + 1):
             self.item_dict2[int(self.item_array[x, 0])] = x
 
-    def score_it2(self, result_file="fm_submissions2_tag_m.txt"):
+    def score_it2(self, result_file="fm_submissions2_tag_w.txt"):
         self.item_hot2()
         self.read_jingyan()
         score_array = [0] * 2000  # 存储总的
