@@ -1,6 +1,6 @@
 # coding=utf-8
 import os
-import numpy as  np
+import numpy as np
 import time
 
 class class_gailv():
@@ -12,6 +12,7 @@ class class_gailv():
         self.dict_class = {}
         self.class_num = 0
         self.class_class = np.zeros((2, 2))
+        self.class_class2 = np.zeros((2, 2))
 
     def read_txt(self, filename="dim_items.txt"):
         # 读取商品的类别信息表
@@ -36,6 +37,7 @@ class class_gailv():
         r_path = os.path.join(self.data_dir, "class_class.txt")
         r_stream = open(r_path, 'r')
         self.class_class = np.zeros((self.class_num, self.class_num))
+        self.class_class2 = np.zeros((self.class_num, self.class_num))
         for line in r_stream:
             my_str = line.strip().split('\t')
             class_ind1 = self.dict_class[int(my_str[0])]
@@ -45,10 +47,13 @@ class class_gailv():
         r_stream.close()
         self.class_class[:, :] += 1.0 / self.class_num  #  加上一个较小的数 不会除零
         row_sum = self.class_class.sum(1)  # 按照行求和
+        all_sum = sum(row_sum)
         for ind1 in xrange(0, self.class_num):
             for ind2 in xrange(0, self.class_num):
                 a = int(self.class_class[ind1, ind2])
                 self.class_class[ind1, ind2] = self.class_class[ind1, ind2]/ row_sum[ind1]  # ind1 条件下 ind2 的概率
+                self.class_class2[ind1, ind2] = 1.0 * self.class_class[ind1, ind2] / row_sum[ind2] * all_sum # 除以ind2 原来的概率
+
 
     def get_gailv(self, class_id1, class_id2):
         ind1 = self.dict_class.get(int(class_id1), -1)
@@ -58,8 +63,18 @@ class class_gailv():
             return 0
         else:
             return self.class_class[ind1, ind2]
+
+    def get_gailv2(self, class_id1, class_id2):
+        ind1 = self.dict_class.get(int(class_id1), -1)
+        ind2 = self.dict_class.get(int(class_id2), -1)
+        if ind1 == -1 or ind2 == -1:
+            print "warning : something unexpected "
+            return 1
+        else:
+            return self.class_class2[ind1, ind2]
+
 if __name__ == "__main__":
     a = class_gailv()
     a.read_txt()
     a.my_tongji2()
-    a.get_gailv(288,516)
+    a.get_gailv(288, 516)

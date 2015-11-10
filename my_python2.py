@@ -376,13 +376,13 @@ class READ_Bought_History():
         else:
             for item_index in xrange(0, (self.item_num + 1)):
                 class_id2 = int(self.item_class[item_index])
-                temp_array1[item_index] = self.my_cgailv.get_gailv(class_id1, class_id2)
+                temp_array1[item_index] = self.my_cgailv.get_gailv2(class_id1, class_id2)
             self.pre_class_id = class_id1
             self.pre_class_gailv = temp_array1
         temp_array2 = result_array + self.temp_item_array_hot  # 构造一个全长的 发生向量(最优概率的近似)
         result_array = temp_array2  #
         array_sum = sum(result_array)  # 求和
-        temp_array = temp_array1 * temp_array2  # 相乘
+        temp_array = temp_array1 * temp_array2 / (self.item_array[:, 1]+0.00000001)  # 相乘
         my_orders1 = np.argsort(-temp_array)  # 预排序
         item_index = self.item_dict.get(item_id, -1)
         if item_index == -1:
@@ -397,12 +397,12 @@ class READ_Bought_History():
             # if self.pro_da_pei[i_order] < self.p_match:  # 小于基线
             #     continue
             # temp_pro = pes.get_pro_r(self.temp_item_array_hot[temp_item_index]
-            #                          , result_array[temp_item_index], array_sum)  # 发生的概率
+            #                          , result_array[temp_item_index], array_sum)  # 考虑原假设后 的 发生的概率
             temp_pro = result_array[temp_item_index]/ array_sum  # 不考虑原假设
             temp_result_array[i_temp_result, :] = [self.item_array[temp_item_index, 0],
-                                                   temp_pro * temp_array1[temp_item_index]]
+                                                   temp_pro/(self.item_array[item_index, 1]+0.000000001) * temp_array1[temp_item_index]]
             i_temp_result += 1
-            if i_temp_result == 400:
+            if i_temp_result == 600:
                 break
         temp_result_array = temp_result_array[0:i_temp_result, :]
         temp_order = np.argsort(-temp_result_array[:, 1])  # 按照概率降序排列
@@ -422,9 +422,11 @@ class READ_Bought_History():
         w_stream = open(os.path.join(self.data_dir, 'fm_submissions21.txt'), 'w')
         r_stream = open(os.path.join(self.data_dir, file_path), 'r')  # 词计算的结果
         iii = 0
+        t0 = time.time()
         for line_s in r_stream:
-            if iii % 100 == 0:
-                print iii, time.time()
+            if iii % 100 == 0 or time.time()-t0 > 100:
+                t0 = time.time()
+                print iii,  t0
             iii += 1
             my_str = line_s.split('\t')
             item_id = int(my_str[0])

@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import time
-import scipy
+
 """
 对前两百的命中数进行统计
 """
@@ -183,4 +183,4 @@ class score_txt():
 if __name__ == "__main__":
     b = score_txt()
     b.read_some()
-    b.score_it2()
+    b.score_it()
