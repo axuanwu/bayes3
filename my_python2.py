@@ -396,9 +396,9 @@ class READ_Bought_History():
                 continue
             # if self.pro_da_pei[i_order] < self.p_match:  # 小于基线
             #     continue
-            # temp_pro = pes.get_pro_r(self.temp_item_array_hot[temp_item_index]
-            #                          , result_array[temp_item_index], array_sum)  # 考虑原假设后 的 发生的概率
-            temp_pro = result_array[temp_item_index]/ array_sum  # 不考虑原假设
+            temp_pro = pes.get_pro_r(self.item_array[item_index, 1]+0.000000001
+                                     , result_array[temp_item_index], array_sum)  # 考虑原假设后 的 发生的概率
+            # temp_pro = result_array[temp_item_index]/ array_sum  # 不考虑原假设
             temp_result_array[i_temp_result, :] = [self.item_array[temp_item_index, 0],
                                                    temp_pro/(self.item_array[item_index, 1]+0.000000001) * temp_array1[temp_item_index]]
             i_temp_result += 1
