@@ -36,6 +36,7 @@ class most_like():
         self.item_top_k = 100000
         # 原始的搭配概率
         self.p_match = 0.0006  # 任意随机商品 搭配的概率
+        self.num_word2 = 1000
 
         pass
 
@@ -225,9 +226,9 @@ class most_like():
     # 对2000个词来 进行构造矩阵
     def dapei(self):
         # 每一个词后面 各个商品的发生几率
-        self.my_matrix = np.zeros((self.r_word_num+1, self.item_top_k+1))
+        self.my_matrix = np.zeros((self.num_word2, self.item_top_k+1))
         temp_word_pro2 = np.log(self.word_M[:, 1])
-        for word_ind1 in xrange(0, self.r_word_num+1):
+        for word_ind1 in xrange(0, self.num_word2):
             temp_word = self.r_word_M[word_ind1, ]
             # word_id1 = int(temp_word[0])
             temp_word_pro = np.log(self.word_word[word_ind1, ])
@@ -245,6 +246,27 @@ class most_like():
                     self.my_matrix[word_ind1, item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
                     word_num2 += 1
 
+    def get_pro_1(self,word_ind1):
+        if word_ind1 < self.num_word2:
+            return self.my_matrix[word_ind1, ]
+        else:
+            array0 = np.array([0.0]*(self.item_top_k+1))
+            temp_word_pro2 = np.log(self.word_M[:, 1])
+            temp_word_pro = np.log(self.word_word[word_ind1, ])
+            for item_ind in xrange(0, self.item_top_k):
+                word_str = self.item_word_array[item_ind]
+                if word_str == "":  # 没有任何词语
+                    continue
+                word_str = word_str.split(',')
+                word_num2 = 0
+                for word_id2 in word_str:
+                    word_ind2 = self.dict_word.get(int(word_id2), -1)
+                    if word_ind2 == -1:
+                        continue
+                    word_ind2 = min(word_ind2, self.top_k_word)
+                    array0[item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
+                    word_num2 += 1
+            return array0
     # 得到某一个词的搭配商品
     def get(self, item_id):
         yyy = np.array([0.0] * self.item_top_k)
@@ -262,7 +284,7 @@ class most_like():
             if word_ind1 == -1:
                 continue  # 非统计对象
             word_ind1 = min(word_ind1, self.r_word_num)
-            yyy += self.my_matrix[word_ind1, ]  # word_word 记录的是 真实概率
+            yyy += self.get_pro_1(word_ind1)  # word_word 记录的是 真实概率
         b = max(yyy)
         yyy = np.exp(yyy - b) # 最大值化为一
         return yyy
@@ -295,5 +317,6 @@ if __name__ == "__main__":
     a.read_item_hot()
     print 3
     a.dapei()  #
+    print 4
     a.write_result()
     # a.get_item_array(171811)
