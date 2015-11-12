@@ -1,15 +1,13 @@
 # coding=utf-8
 import math
-
-__author__ = '01053185'
 import numpy as np
 import os
 import time
 from pro_estimate2 import Pro_estimate
+import sys
 
 
-class most_like():
-
+class WordOpinion():
     def __init__(self):
         self.data_dir = 'E:\\gitshell\\tianchi3'
         self.my_matrix = np.zeros((2, 2))  # 记录词到商品的概率对数
@@ -23,7 +21,7 @@ class most_like():
         # 需要预测的词组
         self.r_word_num = 0
         self.r_dict_word = {}
-        self.r_word_M = np.zeros((80000, 2))  #  第一列词 第二列词的次数
+        self.r_word_M = np.zeros((80000, 2))  # 第一列词 第二列词的次数
         self.test_item = []
         # 商品
         self.dict_item = {}
@@ -36,7 +34,7 @@ class most_like():
         self.item_top_k = 100000
         # 原始的搭配概率
         self.p_match = 0.0006  # 任意随机商品 搭配的概率
-        self.num_word2 = 1000
+        self.num_word2 = 800
 
         pass
 
@@ -70,7 +68,6 @@ class most_like():
                 else:
                     self.word_M[word_ind, 1] += 1
                     # self.word_item_array[word_ind] += ',' + my_str[0]  # 商品
-
 
         self.word_M = self.word_M[0:self.word_num, :]
         self.item_M = self.item_M[0:self.item_num, :]
@@ -151,7 +148,9 @@ class most_like():
                     word_ind2 = min(word_ind2, self.top_k_word)
                     temp_array[word_ind1, word_ind2] += num  # word_ind 指示的词发生后其关联商品 为 含word_ind2的词 次数+1
         r_stream.close()
-        temp_array += 1.0/self.top_k_word  # 增加 一个未知事件 保证没有概率为0 的情况
+        for x in xrange(0, self.top_k_word):
+            temp_array[:, x] += self.word_M[x, 1]  # 增加 一个未知事件 保证没有概率为0 的情况
+        temp_array[:, self.top_k_word] += sum(self.word_M[self.top_k_word:, 1])
         # 求概率
         temp_array_sum = temp_array.sum(1)  # 按照行进行求和
         (row_num, col_num) = temp_array.shape
@@ -165,13 +164,13 @@ class most_like():
                 p_pre = self.word_M[i_col, 1]
             for i_row in xrange(0, row_num):
                 a = temp_array[i_row, i_col]
-                temp_array[i_row, i_col] = temp_array[i_row, i_col]/temp_array_sum[i_row]
-                    # self.pro_guji.get_pro_r(p_pre,
-                    #                         temp_array[i_row, i_col],
-                    #                         temp_array_sum[i_row])  # p n m
+                # temp_array[i_row, i_col] = temp_array[i_row, i_col]/temp_array_sum[i_row]
+                temp_array[i_row, i_col] = self.pro_guji.get_pro_r(p_pre,
+                                                                   temp_array[i_row, i_col],
+                                                                   temp_array_sum[i_row])  # p n m
                 if i_row == 1:
-                        o_stream.write(str(p_pre)+'\t'+str(temp_array[i_row, i_col])
-                                       +'\t'+str(a) +'\t'+str(temp_array_sum[i_row])+'\n')
+                    o_stream.write(str(p_pre) + '\t' + str(temp_array[i_row, i_col])
+                                   + '\t' + str(a) + '\t' + str(temp_array_sum[i_row]) + '\n')
         # 静态存储
         o_stream.close()
         w_file = os.path.join(self.data_dir, file_name + str(i_file) + '.txt')
@@ -226,12 +225,14 @@ class most_like():
     # 对2000个词来 进行构造矩阵
     def dapei(self):
         # 每一个词后面 各个商品的发生几率
-        self.my_matrix = np.zeros((self.num_word2, self.item_top_k+1))
-        temp_word_pro2 = np.log(self.word_M[:, 1])
+        self.my_matrix = np.zeros((self.num_word2, self.item_top_k))
+        temp_word_pro2 = np.log(self.word_M[0:self.top_k_word + 1, 1])
+        temp_word_pro2[self.top_k_word] = self.word_M[x, 1]
         for word_ind1 in xrange(0, self.num_word2):
-            temp_word = self.r_word_M[word_ind1, ]
+            temp_word = self.r_word_M[word_ind1,]
+            print word_ind1
             # word_id1 = int(temp_word[0])
-            temp_word_pro = np.log(self.word_word[word_ind1, ])
+            temp_word_pro = np.log(self.word_word[word_ind1,])
             for item_ind in xrange(0, self.item_top_k):
                 word_str = self.item_word_array[item_ind]
                 if word_str == "":  # 没有任何词语
@@ -246,13 +247,14 @@ class most_like():
                     self.my_matrix[word_ind1, item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
                     word_num2 += 1
 
-    def get_pro_1(self,word_ind1):
-        if word_ind1 < self.num_word2:
-            return self.my_matrix[word_ind1, ]
+    # 返回某一个词对每个 商品的搭配意见
+    def get_pro_1(self, word_ind1, ab=True):
+        if word_ind1 < self.num_word2 and ab:
+            return self.my_matrix[word_ind1,]
         else:
-            array0 = np.array([0.0]*(self.item_top_k+1))
+            array0 = np.array([0.0] * (self.item_top_k))
             temp_word_pro2 = np.log(self.word_M[:, 1])
-            temp_word_pro = np.log(self.word_word[word_ind1, ])
+            temp_word_pro = np.log(self.word_word[word_ind1,])
             for item_ind in xrange(0, self.item_top_k):
                 word_str = self.item_word_array[item_ind]
                 if word_str == "":  # 没有任何词语
@@ -267,6 +269,7 @@ class most_like():
                     array0[item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
                     word_num2 += 1
             return array0
+
     # 得到某一个词的搭配商品
     def get(self, item_id):
         yyy = np.array([0.0] * self.item_top_k)
@@ -284,9 +287,9 @@ class most_like():
             if word_ind1 == -1:
                 continue  # 非统计对象
             word_ind1 = min(word_ind1, self.r_word_num)
-            yyy += self.get_pro_1(word_ind1)  # word_word 记录的是 真实概率
+            yyy += self.get_pro_1(word_ind1, False)  # word_word 记录的是 真实概率
         b = max(yyy)
-        yyy = np.exp(yyy - b) # 最大值化为一
+        yyy = np.exp(yyy - b)  # 最大值化为一
         return yyy
 
     def write_result(self):
@@ -300,14 +303,16 @@ class most_like():
                 t_b = time.time()
                 print iii, t_b
             pro_gailv = self.get(item_id)
-            w_stream1.writelines(str(item_id)+'\t')
-            for item_ind in xrange(0, self.item_top_k-1):
-                w_stream1.writelines(str(pro_gailv[item_ind])+'\t')
-            w_stream1.writelines(str(pro_gailv[self.item_top_k-1])+'\n')
+            w_stream1.writelines(str(item_id) + '\t')
+            for item_ind in xrange(0, self.item_top_k - 1):
+                w_stream1.writelines(str(pro_gailv[item_ind]) + '\t')
+            w_stream1.writelines(str(pro_gailv[self.item_top_k - 1]) + '\n')
+            break
         w_stream1.close()
 
+
 if __name__ == "__main__":
-    a = most_like()
+    a = WordOpinion()
     a.read_txt()
     a.result_word()
     print 1
@@ -316,7 +321,7 @@ if __name__ == "__main__":
     print 2
     a.read_item_hot()
     print 3
-    a.dapei()  #
+    # a.dapei()  #
     print 4
     a.write_result()
-    # a.get_item_array(171811)
+    

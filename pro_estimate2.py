@@ -85,7 +85,7 @@ class Pro_estimate():
 
     # 修改设置数组的方式
     def set_array(self):
-        min_step = 0.0005  # 区间概率
+        min_step = 0.0002  # 区间概率
         min_size = 0.005  # 区间宽度
         start = 0.0
         self.step_i = 0
