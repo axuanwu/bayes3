@@ -227,7 +227,7 @@ class WordOpinion():
         # 每一个词后面 各个商品的发生几率
         self.my_matrix = np.zeros((self.num_word2, self.item_top_k))
         temp_word_pro2 = np.log(self.word_M[0:self.top_k_word + 1, 1])
-        temp_word_pro2[self.top_k_word] = self.word_M[x, 1]
+        temp_word_pro2[self.top_k_word] = sum(self.word_M[self.top_k_word:, 1])
         for word_ind1 in xrange(0, self.num_word2):
             temp_word = self.r_word_M[word_ind1,]
             print word_ind1
