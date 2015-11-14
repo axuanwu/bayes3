@@ -247,7 +247,7 @@ class WordOpinion():
                     self.my_matrix[word_ind1, item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
                     word_num2 += 1
 
-    # 返回某一个词对每个 商品的搭配意见
+    # 返回某一个词对每个 商品的搭配意见  每个词只受到前面一个词影响最大的词的影响
     def get_pro_1(self, word_ind1, ab=True):
         if word_ind1 < self.num_word2 and ab:
             return self.my_matrix[word_ind1,]
@@ -260,14 +260,18 @@ class WordOpinion():
                 if word_str == "":  # 没有任何词语
                     continue
                 word_str = word_str.split(',')
+                pro_array = np.array([0]*len(word_str))
                 word_num2 = 0
                 for word_id2 in word_str:
                     word_ind2 = self.dict_word.get(int(word_id2), -1)
                     if word_ind2 == -1:
                         continue
                     word_ind2 = min(word_ind2, self.top_k_word)
-                    array0[item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
+                    pro_array[word_num2] = temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
+                    # array0[item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
                     word_num2 += 1
+                i_max = np.argmax(np.abs(pro_array))
+                array0[item_ind] = pro_array[i_max]
             return array0
 
     # 得到某一个词的搭配商品
@@ -287,7 +291,7 @@ class WordOpinion():
             if word_ind1 == -1:
                 continue  # 非统计对象
             word_ind1 = min(word_ind1, self.r_word_num)
-            yyy += self.get_pro_1(word_ind1, False)  # word_word 记录的是 真实概率
+            yyy += self.get_pro_1(word_ind1)  # word_word 记录的是 真实概率
         b = max(yyy)
         yyy = np.exp(yyy - b)  # 最大值化为一
         return yyy
@@ -307,7 +311,7 @@ class WordOpinion():
             for item_ind in xrange(0, self.item_top_k - 1):
                 w_stream1.writelines(str(pro_gailv[item_ind]) + '\t')
             w_stream1.writelines(str(pro_gailv[self.item_top_k - 1]) + '\n')
-            break
+
         w_stream1.close()
 
 
@@ -321,7 +325,7 @@ if __name__ == "__main__":
     print 2
     a.read_item_hot()
     print 3
-    # a.dapei()  #
+    a.dapei()  #
     print 4
     a.write_result()
     
