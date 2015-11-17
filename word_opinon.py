@@ -226,26 +226,11 @@ class WordOpinion():
     def dapei(self):
         # 每一个词后面 各个商品的发生几率
         self.my_matrix = np.zeros((self.num_word2, self.item_top_k))
-        temp_word_pro2 = np.log(self.word_M[0:self.top_k_word + 1, 1])
-        temp_word_pro2[self.top_k_word] = sum(self.word_M[self.top_k_word:, 1])
         for word_ind1 in xrange(0, self.num_word2):
             temp_word = self.r_word_M[word_ind1,]
             print word_ind1
             # word_id1 = int(temp_word[0])
-            temp_word_pro = np.log(self.word_word[word_ind1,])
-            for item_ind in xrange(0, self.item_top_k):
-                word_str = self.item_word_array[item_ind]
-                if word_str == "":  # 没有任何词语
-                    continue
-                word_str = word_str.split(',')
-                word_num2 = 0
-                for word_id2 in word_str:
-                    word_ind2 = self.dict_word.get(int(word_id2), -1)
-                    if word_ind2 == -1:
-                        continue
-                    word_ind2 = min(word_ind2, self.top_k_word)
-                    self.my_matrix[word_ind1, item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
-                    word_num2 += 1
+            self.my_matrix[word_ind1,] = self.get_pro_1(word_ind1,False)
 
     # 返回某一个词对每个 商品的搭配意见
     def get_pro_1(self, word_ind1, ab=True):
@@ -253,7 +238,8 @@ class WordOpinion():
             return self.my_matrix[word_ind1,]
         else:
             array0 = np.array([0.0] * (self.item_top_k))
-            temp_word_pro2 = np.log(self.word_M[:, 1])
+            temp_word_pro2 = np.log(self.word_M[0:self.top_k_word + 1, 1])
+            temp_word_pro2[self.top_k_word] = sum(self.word_M[self.top_k_word:, 1])
             temp_word_pro = np.log(self.word_word[word_ind1,])
             for item_ind in xrange(0, self.item_top_k):
                 word_str = self.item_word_array[item_ind]
@@ -268,6 +254,7 @@ class WordOpinion():
                     word_ind2 = min(word_ind2, self.top_k_word)
                     array0[item_ind] += temp_word_pro[word_ind2] - temp_word_pro2[word_ind2]
                     word_num2 += 1
+                array0[item_ind] = array0[item_ind]/word_num2
             return array0
 
     # 得到某一个词的搭配商品
@@ -278,6 +265,7 @@ class WordOpinion():
         if len(word_str) == 0:
             return yyy
         word_str_array = word_str.split(',')
+        aaa = 1
         for word_id in word_str_array:
             try:
                 word_id2i = int(word_id)
@@ -287,7 +275,9 @@ class WordOpinion():
             if word_ind1 == -1:
                 continue  # 非统计对象
             word_ind1 = min(word_ind1, self.r_word_num)
-            yyy += self.get_pro_1(word_ind1, False)  # word_word 记录的是 真实概率
+            yyy += self.get_pro_1(word_ind1)  # word_word 记录的是 真实概率
+            aaa += 1
+        yyy = yyy/aaa
         b = max(yyy)
         yyy = np.exp(yyy - b)  # 最大值化为一
         return yyy
@@ -307,7 +297,6 @@ class WordOpinion():
             for item_ind in xrange(0, self.item_top_k - 1):
                 w_stream1.writelines(str(pro_gailv[item_ind]) + '\t')
             w_stream1.writelines(str(pro_gailv[self.item_top_k - 1]) + '\n')
-            break
         w_stream1.close()
 
 
@@ -316,12 +305,12 @@ if __name__ == "__main__":
     a.read_txt()
     a.result_word()
     print 1
-    a.my_tongji3()  # 统计 词词 关系
+    # a.my_tongji3()  # 统计 词词 关系
     a.read_word_word()
     print 2
     a.read_item_hot()
     print 3
-    # a.dapei()  #
+    a.dapei()  #
     print 4
     a.write_result()
-    
+
