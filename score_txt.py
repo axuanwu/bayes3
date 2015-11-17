@@ -141,7 +141,7 @@ class score_txt():
         test_file = open(os.path.join(self.data_dir, result_file), 'r')
         i = 0
         sum0 = 0
-        step = 500
+        step = 50
         a = 0  # 记录热度在10万以外的搭配商品数
         for line_s in test_file:
             if i % 100 == 0:
@@ -150,10 +150,7 @@ class score_txt():
             item_id = int(my_str[0])
             pro_da_pei = np.array([0.0] * self.top_k_da)
             for x in xrange(1, self.top_k_da + 1):
-                try:
-                    pro_da_pei[x - 1] = float(my_str[x])
-                except:
-                    break
+                pro_da_pei[x - 1] = float(my_str[x])
             i += 1
             # orders = np.argsort() #降排序
             rank_0 = np.argsort(np.argsort(-pro_da_pei))
@@ -177,10 +174,9 @@ class score_txt():
                 else:
                     score_array1[int(rank_0[ind] - 1) / step] += 1
         # print i, sum0, sum(score_array)
-        aaa = int(100000/step)
-        print i, sum0, sum(score_array), score_array[0:aaa]
-        print i1, sum1, sum(score_array1), score_array1[0:aaa]
-        print i2, sum2, sum(score_array2), score_array2[0:aaa]
+        print i, sum0, sum(score_array), score_array
+        print i1, sum1, sum(score_array1), score_array1
+        print i2, sum2, sum(score_array2), score_array2
         print a
         return score_array
 
@@ -188,4 +184,3 @@ if __name__ == "__main__":
     b = score_txt()
     b.read_some()
     b.score_it()
-    # b.score_it2("fm_submissions2_tag_w.txt")
