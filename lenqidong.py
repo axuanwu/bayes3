@@ -34,7 +34,12 @@ class known_information():
         self.user_array = np.zeros((self.user_num, 2), int)  # 第一列user_item_array中的结束位置 第二列用户购买商品数
         self.item_array = np.zeros((self.item_num, 4),int)  # 第一列item_user_array中的结束位置 第二列商品被数量 第三列为class_id 第四列 item_id
         self.item_word_list = []  # 按照 item_id' 存放数据 (item_id',word_str)
-        pass
+        # 词组  的 相关变量
+        self.word_num = 100  # 词的数量
+        self.record_word = 100  # 商品-词组对 的数量
+        self.wordid_dict = {}
+        self.word_array = np.zeros((self.word_num, 3), int)  # word_id ,结束位置, 商品数
+        self.word_item_array = np.zeros((self.record_word, 1), int)  # itemid’
 
     def read_history(self):
         # 返回用户商品购买信息
@@ -134,7 +139,7 @@ class known_information():
                 i_num = 1
             self.user_item_array[i_record, ] = [temp_history_array[0, 1],
                                                 datediff(day_start, temp_history_array[i_record, 2])]
-        self.user_item_array = temp_history_array  # # 第一列记录item_id'   第二列购买次数 第三列记录最后一次购买时间差(与第一天相比)
+        self.user_array[user_before - gl.userIdStart,] = [self.record_num, i_num]
         # 索引商品信息
         temp_history_array = sorted(temp_history_array[:, 0:2], key=lambda l: [l[1], l[0]])  # 商品 用户 排序
         self.item_user_array = np.zeros((self.record_num, 2), int)  # 第一列记录user_id'  第二列购买次数
@@ -159,8 +164,10 @@ class known_information():
                 i_record_num += 1
                 [user_before, item_before] = temp_history_array[i_record, 0:2]
                 self.item_user_array[i_record_num - 1,] = [temp_history_array[i_record, 0], 1]
-        self.user_item_array = self.item_user_array[0:i_record_num, ]
-        # item_array 中 加入类别、词组信息
+        ind = item_before - gl.itemIDStart
+        self.item_array[ind, 0:4] = [i_record_num, i_num, 0, temp_array[ind, 0]]
+        self.item_user_array = self.item_user_array[0:i_record_num, ]
+        # item_array 中 加入类别、词组信息 以及 历史中不存在的商品
         read_stream = open(gl.itemClassWordFile, 'r') # 商品的类别，词组信息文件
         temp_word_list = []
         for line in read_stream:
@@ -180,7 +187,101 @@ class known_information():
         read_stream.close()
         self.item_word_list = sorted(temp_word_list, key=lambda l: l[0])
 
+    def map_word(self):
+        # 索引词组到商品的信息
+        # step1：拆分商品 词组 记录
+        temp_array = np.zeros((1000*10000, 2), int)  # 商品词的记录
+        i_num = 0
+        for tuple in self.item_word_list:
+            item_id_bar = tuple[0]
+            word_str_array = tuple[1].split(',')
+            if len(word_str_array) < 2:
+                continue
+            for word_id in word_str_array:
+                temp_array[i_num, ] = [item_id_bar, int(word_id)]
+                i_num += 1
+        temp_array = temp_array[0:i_num, ]
+        self.record_word = i_num
+        a = np.argsort(temp_array[:, 1])  # 按照词组排序
+        temp_array = temp_array[a, ]
+        # step2： 统计词组的热度 并编制映射关系
+        word_array = np.zeros((500*10000, 2), int)  # 词关系 记录  word_id,item num
+        i_word_num = 1
+        word_array[i_word_num-1, 0:2] = [temp_array[0, 1], 1]
+        for x in xrange(1, i_num):
+            if word_array[i_word_num-1, 0] == temp_array[x, 1]:
+                word_array[i_word_num-1, 1] += 1
+            else:
+                i_word_num += 1
+                word_array[i_word_num-1, ] = [temp_array[x, 1], 1]
+        word_array = word_array[0:i_word_num, ]
+        a = np.argsort(- word_array[:, 1])  # 按照次序降序排列
+        word_array = word_array[a, ]
+        x = 0
+        for x in xrange(0, i_word_num):
+            # if word_array[x, 1]==1:
+            #     break  # 不映射只有一个商品的词
+            self.wordid_dict[word_array[x, 0]] = x
+        self.word_num = x  # 收录词的个数
+        # step3： 重新映射 词组 商品数据
+        for x in xrange(0, self.record_word):
+            temp_array[x, 1] = self.wordid_dict[temp_array[x, 1]]
+        a = np.argsort(temp_array[:, 1])
+        temp_array = temp_array[a, ]  # 重新排序
+        # 索引词
+        self.word_item_array = np.zeros((self.record_word, 1), int)
+        self.word_array = np.zeros((self.word_num, 3), int)
+        word_dict_array = sorted(self.wordid_dict.iteritems(),key = lambda l:l[1])
+        word_before = temp_array[0, 0]
+        i_num = 1
+        for i_record in xrange(1, self.record_word):
+            if temp_array[i_record, 1] == word_before:
+                # 词相同
+                i_num += 1
+            else:
+                self.word_array[word_before,0:3] = [word_dict_array[word_before, 0], i_record, i_num]   # word_id ,结束位置, 商品数
+                i_num = 1
+                word_before = temp_array[i_record, 1]
+        self.word_array[word_before,0:3] = [word_dict_array[word_before, 0], self.record_word, i_num]
+
+    def item2user(self, item_id, bar_mark = True):
+        """
+        根据商品id 返回购买用户
+        """
+        if not bar_mark:
+            item_id = self.itemid_dict.get(item_id, -1)
+            if item_id == -1:
+                print "非录入商品"
+                return []
+        temp = self.item_array[item_id-gl.itemIDStart, ]
+        if temp[1] == 0:
+            return []
+        else:
+            return self.item_user_array[(temp[0]-temp[1]):temp[1],]
+
+    def item2class(self, item_id, bar_mark = True):
+        # 返回商品类别
+        if not bar_mark:
+            item_id = self.itemid_dict.get(item_id, -1)
+            if item_id == -1:
+                print "非录入商品"
+                return []
+        return self.item_array[item_id-gl.itemIDStart, 2]
+
+    def item_inverse(self,item_id):
+        # 从item_id'逆转换到 原始的 item_id
+        return self.item_array[item_id-gl.itemIDStart, 3]
+
+    def user2item(self,user_id, bar_mark = True):
+        if not bar_mark:
+            user_id = self.userid_dict.get(user_id, -1)
+            if user_id == -1:
+                print "非录入用户"
+                return[]
+        temp = self.user_array[user_id-gl.userIdStart]
+        return self.item_user_array[(temp[0]-temp[1]):temp[1],]
 
 if __name__ == "__main__":
     a = known_information()
     a.map()  # 商品信息 购买历史 信息完成录入并 映射
+
