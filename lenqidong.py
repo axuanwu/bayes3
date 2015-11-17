@@ -242,7 +242,33 @@ class known_information():
                 self.word_array[word_before,0:3] = [word_dict_array[word_before, 0], i_record, i_num]   # word_id ,结束位置, 商品数
                 i_num = 1
                 word_before = temp_array[i_record, 1]
-        self.word_array[word_before,0:3] = [word_dict_array[word_before, 0], self.record_word, i_num]
+        self.word_array[word_before, 0:3] = [word_dict_array[word_before, 0], self.record_word, i_num]
+        self.word_item_array = temp_array[:, 0]
+
+    def word2item(self,word_id, bar_mark = False):
+        #  返回某一个词组的 所有商品 item_id'
+        if not bar_mark:
+            word_id = self.wordid_dict.get(word_id, -1)
+            if word_id == -1:
+                print "非录入词组"
+                return []
+        temp = self.word_array[word_id]
+        return self.word_item_array[(temp[1]-temp[2]):temp[1], 0]
+
+    def word2itemArray(self,word_id, bar_mark = False):
+        #  返回某一个词组的商品 0,1 向量组，并去除没有购买历史的商品
+        a = np.array([False]*self.item_num_history)
+        if not bar_mark:
+            word_id = self.wordid_dict.get(word_id, -1)
+            if word_id == -1:
+                print "非录入词组"
+                return a
+        temp = self.word_array[word_id]
+        for x in xrange(temp[1]-temp[2],temp[1]):
+            item_ind = self.word_item_array[x, 0] - gl.itemIDStart
+            if item_ind < self.item_num_history:
+                a[item_ind] = True
+        return a
 
     def item2user(self, item_id, bar_mark = True):
         """
