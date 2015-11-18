@@ -21,6 +21,21 @@ class items(known_information):
         self.map()
         self.map_word()
 
+    def count_relate_num(self, item_id_bar, item_array):
+        # 代完成
+        """
+
+        :rtype : self.item_num_history 长度的向量
+        """
+        a = np.array([0]*self.item_num_history)
+        return a
+
     def item_relate_item(self, item_id, bar_mark=True):
+        if not bar_mark:
+            item_id = self.itemid_dict[item_id]
         a = np.array([0]*self.item_num_history)  # 有购买历史的商品的长度
-        user_array = self.
+        user_array = self.item2user(item_id, True)  #
+        for user_id in user_array:
+            item_array = self.user2item(user_id, True)
+            a += self.count_relate_num(item_id, item_array)
+        return a
