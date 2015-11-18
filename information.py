@@ -4,7 +4,7 @@ import numpy as np
 import time
 import datetime
 import gl
-import cPickle as pickle
+import pickle
 """
 由于购买记录访问比较频繁，本模块旨在录入商品并做进一步映射，实现更快的访问
 用户id映射为 2000000+i(存储索引) 记为user_id'
@@ -22,6 +22,7 @@ def datediff(a, b):
 
 
 class known_information():
+
     def __init__(self):
         self.user_num = 100
         self.item_num = 100
