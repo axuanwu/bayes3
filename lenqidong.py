@@ -53,8 +53,8 @@ class known_information():
             for i in xrange(0, 3):
                 temp_history_array[i_line, i] = int(my_str[i])
             i_line += 1
-            if i_line == 100000:
-                break
+##            if i_line == 100000:
+##                break
         self.record_num = i_line
         r_stream.close()
         print time.time()
@@ -329,21 +329,31 @@ class known_information():
         return self.user_item_array[(temp[0]-temp[1]):temp[0],]
 
 if __name__ == "__main__":
+    t1 = time.time()
     a = known_information()
     a.map()  # 商品信息 购买历史 信息完成录入并 映射
     a.map_word()
+    print time.time() -t1
     # 以下为几个简单的测试
     b = a.user2item(12058626,False)
     print a.itemid_dict[32567] in b[:, 0]  # 12068626 买的商品中是否有 32567
     b = a.item2user(32567, False)
     print a.userid_dict[12058626] in b[:, 0]  #  买了 32567的用户中是否有  用户 12068626
     b = a.word2item(123950, False)  # 
-    print a.itemid_dict[32567] in b[:, 0]  # 词 123950的商品中 是否有 32567
+    print a.itemid_dict[32567] in b[:, 0]  # 词123950的商品中 是否有 32567
     f1 = file(gl.pickle_file, 'wb')
+    pickle.dump(a.item_user_array, f1)
+    a.item_user_array = 0
+    pickle.dump(a.user_item_array, f1)
+    a.user_item_array = 0
     pickle.dump(a, f1)
     f1.close()
     del a
     f2 = file(gl.pickle_file, 'rb')
+    a1 = pickle.load(gl.pickle_file)
+    a2 = pickle.load(gl.pickle_file)
     a = pickle.load(gl.pickle_file)
+    a.item_user_array = a1
+    a.user_item_array = a2
     b = a.user2item(12058626,False)
     print a.itemid_dict[32567] in b[:, 0]
