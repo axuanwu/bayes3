@@ -33,7 +33,7 @@ class known_information():
         self.user_item_array = np.zeros((self.record_num, 2), int)  # 第一列记录item_id'   第二列记录购买时间差(与第一天相比)
         self.item_user_array = np.zeros((self.record_num, 2), int)  # 第一列记录user_id'  第二列购买次数
         self.user_array = np.zeros((self.user_num, 2), int)  # 第一列user_item_array中的结束位置 第二列用户购买商品数
-        self.item_array = np.zeros((self.item_num, 4),int)  # 第一列item_user_array中的结束位置 第二列商品被数量 第三列为class_id 第四列 item_id
+        self.item_array = np.zeros((self.item_num, 4),int)  # 第一列item_user_array中的结束位置 第二列商品购买用户数量 第三列为class_id 第四列 item_id
         self.item_word_list = []  # 按照 item_id' 存放数据 (item_id',word_str)
         # 词组  的 相关变量
         self.word_num = 100  # 词的数量
@@ -41,6 +41,11 @@ class known_information():
         self.wordid_dict = {}
         self.word_array = np.zeros((self.word_num, 3), int)  # word_id ,结束位置, 商品数
         self.word_item_array = np.zeros((self.record_word, 1), int)  # itemid’
+        # 类别 的 相关信息
+        self.class_num = 100
+        self.classid_dict = {}  # 词id的映射表
+        self.class_array = np.zeros((self.class_num, 3), int)  # 存储结束位置 商品个数 购买用户数（按商品去重）
+        self.class_item_array = np.zeros((self.item_num, 1), int)  # itemid’
 
     def read_history(self):
         # 返回用户商品购买信息
@@ -54,8 +59,6 @@ class known_information():
             for i in xrange(0, 3):
                 temp_history_array[i_line, i] = int(my_str[i])
             i_line += 1
-##            if i_line == 100000:
-##                break
         self.record_num = i_line
         r_stream.close()
         print time.time()
@@ -267,7 +270,58 @@ class known_information():
         self.word_array[word_before, 0:3] = [word_dict_array[word_before][0], self.record_word, i_num]
         self.word_item_array[0:self.record_word,0] = temp_array[:, 0]
 
-    def word2item(self,word_id, bar_mark=False):
+    def map_class(self):
+        temp_array = np.zeros((self.item_num, 2), int)  # 第2列class_id 第1列 item_id'
+        temp_array[:, 0] = np.arange(0, self.item_num) + gl.itemIDStart
+        temp_array[:, 1] = self.item_array[:, 2]  # class_id
+        a = np.argsort(temp_array[:, 1], kind='mergesort')  # 稳定排序
+        temp_array = temp_array[a, ]
+        self.class_array = np.zeros((500, 3), int)  # 类别的结束位置 类别的商品数 类别的购买数
+        class_before = temp_array[0, 1]
+        i_num = 1
+        i_num2 = self.item_array[temp_array[0, 0]-gl.itemIDStart, 1]  # 用户数
+        self.class_num = 1
+        self.classid_dict[class_before] = self.class_num - 1
+        for x in xrange(1, self.item_num):
+            if class_before == temp_array[x, 1]:
+                i_num += 1
+                i_num2 += self.item_array[temp_array[x, 0]-gl.itemIDStart, 1]  # 用户数
+            else:
+                self.class_array[self.class_num-1, ] = [class_before, i_num, i_num2]
+                class_before = temp_array[x, 1]  # 类别变更
+                i_num = 1  # 重新计数
+                i_num2 = self.item_array[temp_array[x, 0]-gl.itemIDStart, 1]  # 用户数
+                self.class_num += 1  # 类别数 +1
+                self.classid_dict[class_before] = self.class_num -1  # 映射类别
+        self.class_array[self.class_num-1, ] = [class_before, i_num, i_num2]
+        self.class_array = self.class_array[0:self.class_num, ]
+        self.class_item_array = np.zeros((self.item_num, 1), int)
+        self.class_item_array[:, 0] = temp_array[:, 0]  # 赋值
+
+    def class2item(self, class_id, bar_mark=True):
+        if not bar_mark:
+            class_id = self.classid_dict.get(class_id,-1)
+            if class_id == -1:
+                return []
+        temp = self.class_array[class_id]
+        return np.reshape(self.class_item_array[(temp[0]-temp[1]):temp[0], 0], (temp[1], 1))
+
+    def class2itemArray(self, class_id, bar_mark=True):
+        #  返回某一个类别的商品 0,1 bool向量组，并去除没有购买历史的商品
+        a = np.array([False]*self.item_num_history)
+        if not bar_mark:
+            class_id = self.classid_dict.get(class_id, -1)
+            if class_id == -1:
+                return a
+        temp = self.class_array[class_id]
+        b = self.class_item_array[(temp[0]-temp[1]):temp[0], 0]  # 所有商品
+        for x in b:
+            item_ind = x - gl.itemIDStart
+            if item_ind < self.item_num_history:
+                a[item_ind] = True  # 有购买历史的商品
+        return a
+
+    def word2item(self, word_id, bar_mark=True):
         #  返回某一个词组的 所有商品 item_id'
         if not bar_mark:
             word_id = self.wordid_dict.get(word_id, -1)
@@ -277,7 +331,7 @@ class known_information():
         temp = self.word_array[word_id]
         return np.reshape(self.word_item_array[(temp[1]-temp[2]):temp[1], 0],(temp[2],1))
 
-    def word2itemArray(self,word_id, bar_mark = False):
+    def word2itemArray(self,word_id, bar_mark=True):
         #  返回某一个词组的商品 0,1 向量组，并去除没有购买历史的商品
         a = np.array([False]*self.item_num_history)
         if not bar_mark:
@@ -314,7 +368,23 @@ class known_information():
             if item_id == -1:
                 print "非录入商品"
                 return []
-        return self.item_array[item_id-gl.itemIDStart, 2]
+        class_id_nobar = self.item_array[item_id-gl.itemIDStart, 2]
+        return self.classid_dict[class_id_nobar]
+
+    def item2word(self, item_id, bar_mark = True):
+        # 返回wordid_bar的数组
+        if not bar_mark:
+            item_id = self.itemid_dict.get(item_id, -1)
+            if item_id == -1:
+                print "非录入商品"
+                return []
+        word_str = self.item_word_list[item_id-gl.itemIDStart][1]
+        word_str = word_str.split(',')
+        length = len(word_str)
+        word_array = np.array([0]* length)
+        for x in xrange(0, length):
+            word_array[x] = self.wordid_dict[int(word_str[x])]
+        return word_array
 
     def item_inverse(self,item_id):
         # 从item_id'逆转换到 原始的 item_id
@@ -342,19 +412,4 @@ if __name__ == "__main__":
     print a.userid_dict[12058626] in b[:, 0]  #  买了 32567的用户中是否有  用户 12068626
     b = a.word2item(123950, False)  # 
     print a.itemid_dict[32567] in b[:, 0]  # 词123950的商品中 是否有 32567
-    f1 = file(gl.pickle_file, 'wb')
-    pickle.dump(a.item_user_array, f1)
-    a.item_user_array = 0
-    pickle.dump(a.user_item_array, f1)
-    a.user_item_array = 0
-    pickle.dump(a, f1)
-    f1.close()
-    del a
-    f2 = file(gl.pickle_file, 'rb')
-    a1 = pickle.load(gl.pickle_file)
-    a2 = pickle.load(gl.pickle_file)
-    a = pickle.load(gl.pickle_file)
-    a.item_user_array = a1
-    a.user_item_array = a2
-    b = a.user2item(12058626,False)
-    print a.itemid_dict[32567] in b[:, 0]
+
