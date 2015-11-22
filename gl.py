@@ -12,3 +12,4 @@ BoughtHistoryFile = os.path.join(dataDir, "user_bought_history_o.txt")  # 购买
 pickle_file = os.path.join(dataDir, "information.pkl")  # 商品的类别，词组信息文件
 weight_path = os.path.join(dataDir, "次序关联.txt".decode("utf8"))  # 权重文件
 testFile = os.path.join(dataDir, 'test_set.txt')  # 记录待预测商品的文件
+resultFile = os.path.join(dataDir, 'fm_submissions21.txt')

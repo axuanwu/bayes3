@@ -7,6 +7,7 @@ bar_mark 为True 表示 前面的id经过第二次映射
 注意事项：
 1、该算法所搭配出来的商品全部限定在有购买历史的商品中
 """
+import time
 from information import known_information
 from class_opinion import class_gailv
 import numpy as np
@@ -27,25 +28,6 @@ class items(known_information):
         self.class_information = class_gailv()
         self.class_opinion = np.array([0.0] * 10)  # 类别的打分意见
 
-    def set_information(self):
-        # 购买历史
-        self.map()
-        # 商品词汇
-        self.map_word()
-        # 类别关联意见
-        self.class_information.read_txt()
-        self.class_information.set_dict_class(self.classid_dict)
-        self.class_information.my_tongji2()
-        # 设置 商品的热度
-        self.item_hot_pro = 1.0 * self.item_array[0:self.item_num_history, 1]/sum(self.item_array[0:self.item_num_history, 1])
-        # 设置 词热度
-        self.word_hot_pro = 1.0 * self.word_array[:, 2]/sum(self.word_array[:, 2])
-        # 所有有历史商品的映射类别
-        self.class_id_bar = self.item_array[0: self.item_num_history, 2]
-        for x in xrange(0, self.item_num_history):
-            self.class_id_bar[x] = self.itemid_dict[self.class_id_bar[x]]
-
-
     # 读取次序的权重系数
     def set_weight(self, my_range=10):
         self.my_range = my_range
@@ -60,6 +42,27 @@ class items(known_information):
             if abs(int(my_str[0])) <= range:
                 self.order_weight[abs(int(my_str[0]))] += 0.5 * (float(my_str[3]) - 0.0006)
         self.order_weight = self.order_weight / max(self.order_weight)
+
+    def set_information(self):
+        # 购买历史
+        self.map()
+        # 商品词汇
+        self.map_word()
+        self.map_class()
+        # 类别关联意见
+        self.class_information.read_txt()
+        self.class_information.set_dict_class(self.classid_dict)
+        self.class_information.my_tongji2()
+        # 设置 商品的热度
+        self.item_hot_pro = 1.0 * self.item_array[0:self.item_num_history, 1]/sum(self.item_array[0:self.item_num_history, 1])
+        # 设置 词热度
+        self.word_hot_pro = 1.0 * self.word_array[:, 2]/sum(self.word_array[:, 2])
+        # 所有有历史商品的映射类别
+        self.class_id_bar = self.item_array[0: self.item_num_history, 2]
+        for x in xrange(0, self.item_num_history):
+            self.class_id_bar[x] = self.itemid_dict[self.class_id_bar[x]]
+
+        self.set_weight()
 
     def count_relate_num(self, item_id_bar, user_item_array, bar_mark=True):
         # 计算 商品的关联商品热度
@@ -198,7 +201,10 @@ class items(known_information):
     def dafen(self):
         r_stream = open(gl.testFile, 'r')
         classid_before = -1
+        w_stream = open(gl.resultFile, 'w')
+        w_stream.close()
         for line in r_stream:
+            print line, time.time()
             my_str1 = line.strip().split('\t')
             item_id = int(my_str1[-1])
             item_id_bar = self.itemid_dict[item_id]
@@ -217,4 +223,15 @@ class items(known_information):
                                                                             self.class_id_bar, True)
             # 两者意见相乘
             self.item_relate *= self.class_opinion
+            a = self.item_relate
+            w_stream = open(gl.resultFile, 'a')
+            w_stream.write(str(item_id) + ' ' + str(self.item_inverse(gl.itemIDStart + a[0])))
+            for x in xrange(1, 200):
+                w_stream.write(','+str(self.item_inverse(gl.itemIDStart + a[0])))
+            w_stream.write('\n')
+            w_stream.close()
 
+if __name__ == "__main__":
+    a = items()
+    a.set_information()
+    a.dafen()
