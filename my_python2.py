@@ -364,7 +364,6 @@ class READ_Bought_History():
         # 将 result_array 直接转化为概率
         # 计算统计 该商品的关联性质
         result_array = self.item_2_item(item_id, user_str)
-
         temp_result_array = np.zeros((600, 2))  # 存储 计算结果
         i_temp_result = 0
         temp_array1 = np.array([self.p_match] * (self.item_num + 1))  # 随机搭配的概率 假设

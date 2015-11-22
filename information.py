@@ -230,7 +230,7 @@ class known_information():
         a = np.argsort(temp_array[:, 1])  # 按照词组排序
         temp_array = temp_array[a, ]
         # step2： 统计词组的热度 并编制映射关系
-        word_array = np.zeros((500*10000, 2), int)  # 词关系 记录  word_id,item num
+        word_array = np.zeros((500*10000, 2), int)  # 词关系 记录  word_id,item, num
         i_word_num = 1
         word_array[i_word_num-1, 0:2] = [temp_array[0, 1], 1]
         for x in xrange(1, i_num):
@@ -349,27 +349,58 @@ class known_information():
     def item2user(self, item_id, bar_mark = True):
         """
         根据商品id 返回购买用户
+
+        :type item_id: 可以为 item_id_bar的向量， 或者单个的 item_id 或者 item_id_bar
         """
-        if not bar_mark:
-            item_id = self.itemid_dict.get(item_id, -1)
-            if item_id == -1:
-                print "非录入商品"
+        try:
+            b = len(item_id)
+            if b == 1:
+                item_id = item_id[0]
+        except:
+            pass
+        try:
+            b = len(item_id)  # item_id_bar 数组
+            temp = self.item_array[item_id-gl.itemIDStart, ]
+            m = sum(temp[:,1])
+            temp_iua = np.zeros((m,2))
+            i_start = 0
+            for x in xrange(0, temp.shape[0]):
+                temp_iua[i_start:temp[x, 1], 0:2] = self.item_user_array[(temp[x, 0]-temp[x, 1]):temp[x, 0], 0:2]
+                i_start += temp[x, 1]
+            a = np.argsort(temp_iua[:, 0])
+            temp_iua = temp_iua[a, ]
+            i_temp = 0
+            i_temp2 = 1
+            while i_temp2 < m:
+                if temp_iua[i_temp2,0] == temp_iua[i_temp, 0]:
+                    temp_iua[i_temp, 1] += temp_iua[i_temp2,1]
+                    i_temp2 += 1
+                else:
+                    i_temp += 1
+                    temp_iua[i_temp, ] += temp_iua[i_temp2, ]
+                    i_temp2 += 1
+            return temp_iua[0:(i_temp+1), ]
+        except:
+            if not bar_mark:
+                item_id = self.itemid_dict.get(item_id, -1)
+                if item_id == -1:
+                    print "非录入商品"
+                    return []
+            temp = self.item_array[item_id-gl.itemIDStart, ]
+            if temp[1] == 0:
                 return []
-        temp = self.item_array[item_id-gl.itemIDStart, ]
-        if temp[1] == 0:
-            return []
-        else:
-            return self.item_user_array[(temp[0]-temp[1]):temp[0],]
+            else:
+                return self.item_user_array[(temp[0]-temp[1]):temp[0], ]
 
     def item2class(self, item_id, bar_mark = True):
-        # 返回商品类别
+        # 返回商品类别 class_id_bar
         if not bar_mark:
             item_id = self.itemid_dict.get(item_id, -1)
             if item_id == -1:
                 print "非录入商品"
                 return []
         class_id_nobar = self.item_array[item_id-gl.itemIDStart, 2]
-        return self.classid_dict[class_id_nobar]
+        return class_id_nobar
 
     def item2word(self, item_id, bar_mark = True):
         # 返回wordid_bar的数组

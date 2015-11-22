@@ -31,8 +31,12 @@ class class_gailv():
                 self.dict_class[class_id] = self.class_num
                 self.class_num += 1
 
+    def set_dict_class(self,a):
+        self.dict_class = a
+        self.class_num = len(self.dict_class.keys())
+
      # 统计 类类 关系
-    def my_tongji2(self):
+    def my_tongji2(self, mark=True):
         # 统计过程由 sql sever 完成后存为class_class.txt 这里直接读取 # 检查完毕
         r_path = os.path.join(self.data_dir, "class_class.txt")
         r_stream = open(r_path, 'r')
@@ -42,7 +46,10 @@ class class_gailv():
             my_str = line.strip().split('\t')
             class_ind1 = self.dict_class[int(my_str[0])]
             class_ind2 = self.dict_class[int(my_str[1])]
-            num = int(my_str[2])
+            if mark:
+                num = int(my_str[2])
+            else:
+                num = 1.0
             self.class_class[class_ind1, class_ind2] += num
         r_stream.close()
         self.class_class[:, :] += 1.0 / self.class_num  #  加上一个较小的数 不会除零
@@ -54,8 +61,14 @@ class class_gailv():
                 self.class_class[ind1, ind2] = self.class_class[ind1, ind2]/ row_sum[ind1]  # ind1 条件下 ind2 的概率
                 self.class_class2[ind1, ind2] = 1.0 * self.class_class[ind1, ind2] / row_sum[ind2] * all_sum # 除以ind2 原来的概率
 
+    def get_gailv_array(self,class_id1, class_id2, bar_mark=True):
+        # 返回概率向量
+        if not bar_mark:
+            print 1/0
+        return self.class_class[class_id1, class_id2]
 
     def get_gailv(self, class_id1, class_id2):
+        # 返回发生的概率
         ind1 = self.dict_class.get(int(class_id1), -1)
         ind2 = self.dict_class.get(int(class_id2), -1)
         if ind1 == -1 or ind2 == -1:
@@ -65,6 +78,7 @@ class class_gailv():
             return self.class_class[ind1, ind2]
 
     def get_gailv2(self, class_id1, class_id2):
+        # 返回发生概率比
         ind1 = self.dict_class.get(int(class_id1), -1)
         ind2 = self.dict_class.get(int(class_id2), -1)
         if ind1 == -1 or ind2 == -1:
