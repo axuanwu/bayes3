@@ -5,6 +5,7 @@ import time
 import datetime
 import gl
 import pickle
+# import StringIO
 """
 由于购买记录访问比较频繁，本模块旨在录入商品并做进一步映射，实现更快的访问
 用户id映射为 2000000+i(存储索引) 记为user_id'
@@ -59,8 +60,8 @@ class known_information():
             for i in xrange(0, 3):
                 temp_history_array[i_line, i] = int(my_str[i])
             i_line += 1
-            if line == 3000000:
-                break
+            # if line == 100000:
+            #     break
         self.record_num = i_line
         r_stream.close()
         print time.time()
@@ -433,17 +434,84 @@ class known_information():
         temp = self.user_array[user_id-gl.userIdStart]
         return self.user_item_array[(temp[0]-temp[1]):temp[0],]
 
+    def save_history(self):
+        # 写 user_item_array
+        o_stream = open(gl.user_item_array_file, 'w')
+        (m, n) = self.user_item_array.shape
+        for i in xrange(0, m):
+            o_stream.write(str(self.user_item_array[i, 0])+'\t'+str(self.user_item_array[i,1])+'\n')
+        o_stream.close()
+        self.user_item_array = np.zeros((2, 2), int)
+        #  写item_user_array_file
+        (m, n) = self.item_user_array.shape
+        o_stream = open(gl.item_user_array_file, 'w')
+        for i in xrange(0, m):
+            o_stream.write(str(self.item_user_array[i, 0])+'\t'+str(self.item_user_array[i,1])+'\n')
+        o_stream.close()
+        self.item_user_array = np.zeros((2, 2), int)
+
+    def load_history(self):
+        # user_item_array
+        o_stream = open(gl.user_item_array_file, 'r')
+        self.user_item_array = np.zeros((self.record_num,2), int)
+        i_line = 0
+        for line in o_stream:
+            my_str = line.rstrip().split("\t")
+            self.user_item_array[i_line, ] = [int(my_str[0]), int(my_str[1])]
+            i_line += 1
+        o_stream.close()
+        self.user_item_array = self.user_item_array[0:i_line, ]
+        #  item_user_array
+        o_stream = open(gl.item_user_array_file, 'r')
+        self.item_user_array = np.zeros((self.record_num, 2), int)
+        i_line = 0
+        for line in o_stream:
+            my_str = line.rstrip().split("\t")
+            self.item_user_array[i_line, ] = [int(my_str[0]), int(my_str[1])]
+            i_line += 1
+        o_stream.close()
+        self.item_user_array = self.item_user_array[0:i_line, ]
+
+
 if __name__ == "__main__":
     t1 = time.time()
     a = known_information()
     a.map()  # 商品信息 购买历史 信息完成录入并 映射
+    print time.time()
     a.map_word()
+    print time.time()
+    a.map_class()
+    print time.time()
     print time.time() - t1
     # 以下为几个简单的测试
-    b = a.user2item(12058626,False)
+    b = a.user2item(12058626, False)
     print a.itemid_dict[32567] in b[:, 0]  # 12068626 买的商品中是否有 32567
     b = a.item2user(32567, False)
-    print a.userid_dict[12058626] in b[:, 0]  #  买了 32567的用户中是否有  用户 12068626
-    b = a.word2item(123950, False)  # 
+    print a.userid_dict[12058626] in b[:, 0]  # 买了 32567的用户中是否有  用户 12068626
+    b = a.word2item(123950, False)  #
     print a.itemid_dict[32567] in b[:, 0]  # 词123950的商品中 是否有 32567
+    # 持久存储。dumps
+    a.save_history()
+    f = open(gl.pickle_file, 'wb')
+    pick = pickle.Pickler(f)
+    pick.dump(a)
+    f.close()
+    pick.clear_memo()
+    del pick
+    del a
 
+    # 读取 pickle
+    f = open(gl.pickle_file, 'rb')
+    pick = pickle.Unpickler(f)
+    a = pick.load()
+    f.close()
+    del pick
+    a.load_history()
+    # 以下为几个简单的测试
+    b = a.user2item(12058626, False)
+    print a.itemid_dict[32567] in b[:, 0]  # 12068626 买的商品中是否有 32567
+    b = a.item2user(32567, False)
+    print a.userid_dict[12058626] in b[:, 0]  # 买了 32567的用户中是否有  用户 12068626
+    b = a.word2item(123950, False)  #
+    print a.itemid_dict[32567] in b[:, 0]  # 词123950的商品中 是否有 32567
+    print time.time()
