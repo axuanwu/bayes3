@@ -39,7 +39,7 @@ class items(known_information):
                 i_line += 1
                 continue
             my_str = line_i.strip().split('\t')
-            if abs(int(my_str[0])) <= range:
+            if abs(int(my_str[0])) < my_range:
                 self.order_weight[abs(int(my_str[0]))] += 0.5 * (float(my_str[3]) - 0.0006)
         self.order_weight = self.order_weight / max(self.order_weight)
 
@@ -60,8 +60,7 @@ class items(known_information):
         # 所有有历史商品的映射类别
         self.class_id_bar = self.item_array[0: self.item_num_history, 2]
         for x in xrange(0, self.item_num_history):
-            self.class_id_bar[x] = self.itemid_dict[self.class_id_bar[x]]
-
+            self.class_id_bar[x] = self.classid_dict[self.class_id_bar[x]]
         self.set_weight()
 
     def count_relate_num(self, item_id_bar, user_item_array, bar_mark=True):
@@ -145,7 +144,7 @@ class items(known_information):
         # temp_array.sum(0)  # 按照列求和
         temp_array2 = temp_array.sum(0)*temp_class_array  # 只看同类别的商品
         temp_max = temp_array2.max()
-        relate_item = np.ones((2000, 3))  # 第一列 item_id' 第二列 相似度 第三列 组别编码
+        relate_item = np.ones((2000, 3), int)  # 第一列 item_id' 第二列 相似度 第三列 组别编码
         i_relate_num = 0
         mark_array = np.exp2(np.arange(0, word_num))
         for i in xrange(0, self.item_num_history):
@@ -155,7 +154,7 @@ class items(known_information):
                 for i_word in xrange(0, word_num):
                     if not temp_array[i_word, i]:
                         # 两个商品在这个词上存在差异
-                        relate_item[1] *= self.word_hot_pro
+                        relate_item[i_relate_num, 1] *= self.word_hot_pro[word_array[i_word]]
                 i_relate_num += 1
                 if i_relate_num == 1000:
                     break
@@ -232,6 +231,7 @@ class items(known_information):
             w_stream.close()
 
 if __name__ == "__main__":
-    a = items()
+    a = items()    
     a.set_information()
+    print 1,time.time()
     a.dafen()

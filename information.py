@@ -59,6 +59,8 @@ class known_information():
             for i in xrange(0, 3):
                 temp_history_array[i_line, i] = int(my_str[i])
             i_line += 1
+            if line == 3000000:
+                break
         self.record_num = i_line
         r_stream.close()
         print time.time()
@@ -210,6 +212,7 @@ class known_information():
                 self.item_array[itemid_bar - gl.itemIDStart, 2] = class_id
                 temp_word_list.append((itemid_bar, my_str[2]))
         read_stream.close()
+        self.item_array = self.item_array[0:self.item_num, ]
         self.item_word_list = sorted(temp_word_list, key=lambda l: l[0])
 
     def map_word(self):
@@ -361,11 +364,11 @@ class known_information():
         try:
             b = len(item_id)  # item_id_bar 数组
             temp = self.item_array[item_id-gl.itemIDStart, ]
-            m = sum(temp[:,1])
+            m = sum(temp[:, 1])
             temp_iua = np.zeros((m,2))
             i_start = 0
             for x in xrange(0, temp.shape[0]):
-                temp_iua[i_start:temp[x, 1], 0:2] = self.item_user_array[(temp[x, 0]-temp[x, 1]):temp[x, 0], 0:2]
+                temp_iua[i_start:(i_start + temp[x, 1]), 0:2] = self.item_user_array[(temp[x, 0]-temp[x, 1]):temp[x, 0], 0:2]
                 i_start += temp[x, 1]
             a = np.argsort(temp_iua[:, 0])
             temp_iua = temp_iua[a, ]
