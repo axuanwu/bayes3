@@ -279,7 +279,7 @@ class known_information():
         temp_array[:, 0] = np.arange(0, self.item_num) + gl.itemIDStart
         temp_array[:, 1] = self.item_array[:, 2]  # class_id
         a = np.argsort(temp_array[:, 1], kind='mergesort')  # 稳定排序
-        temp_array = temp_array[a, ]
+        temp_array[:, :] = temp_array[a, ]
         self.class_array = np.zeros((500, 3), int)  # 类别的结束位置 类别的商品数 类别的购买数
         class_before = temp_array[0, 1]
         i_num = 1
@@ -291,7 +291,7 @@ class known_information():
                 i_num += 1
                 i_num2 += self.item_array[temp_array[x, 0]-gl.itemIDStart, 1]  # 用户数
             else:
-                self.class_array[self.class_num-1, ] = [class_before, i_num, i_num2]
+                self.class_array[self.class_num-1, ] = [x, i_num, i_num2]
                 class_before = temp_array[x, 1]  # 类别变更
                 i_num = 1  # 重新计数
                 i_num2 = self.item_array[temp_array[x, 0]-gl.itemIDStart, 1]  # 用户数
@@ -350,7 +350,7 @@ class known_information():
                 a[item_ind] = True
         return a
 
-    def item2user(self, item_id, bar_mark = True):
+    def item2user(self, item_id, bar_mark=True):
         """
         根据商品id 返回购买用户
 
@@ -366,7 +366,7 @@ class known_information():
             b = len(item_id)  # item_id_bar 数组
             temp = self.item_array[item_id-gl.itemIDStart, ]
             m = sum(temp[:, 1])
-            temp_iua = np.zeros((m,2))
+            temp_iua = np.zeros((m,2), int)
             i_start = 0
             for x in xrange(0, temp.shape[0]):
                 temp_iua[i_start:(i_start + temp[x, 1]), 0:2] = self.item_user_array[(temp[x, 0]-temp[x, 1]):temp[x, 0], 0:2]
@@ -381,7 +381,7 @@ class known_information():
                     i_temp2 += 1
                 else:
                     i_temp += 1
-                    temp_iua[i_temp, ] += temp_iua[i_temp2, ]
+                    temp_iua[i_temp, ] = temp_iua[i_temp2, ]
                     i_temp2 += 1
             return temp_iua[0:(i_temp+1), ]
         except:
@@ -396,7 +396,7 @@ class known_information():
             else:
                 return self.item_user_array[(temp[0]-temp[1]):temp[0], ]
 
-    def item2class(self, item_id, bar_mark = True):
+    def item2class(self, item_id, bar_mark=True):
         # 返回商品类别 class_id_bar
         if not bar_mark:
             item_id = self.itemid_dict.get(item_id, -1)
@@ -490,6 +490,9 @@ if __name__ == "__main__":
     print a.userid_dict[12058626] in b[:, 0]  # 买了 32567的用户中是否有  用户 12068626
     b = a.word2item(123950, False)  #
     print a.itemid_dict[32567] in b[:, 0]  # 词123950的商品中 是否有 32567
+    print len(a.class2item(311,False)) == 8918  # 类别311中是否有 8918个商品
+    b = a.class2itemArray(311, False)
+    print b[a.itemid_dict[782028] - gl.itemIDStart]  # 782028 是否在 类别 311 中
     # 持久存储。dumps
     a.save_history()
     f = open(gl.pickle_file, 'wb')
@@ -514,4 +517,4 @@ if __name__ == "__main__":
     print a.userid_dict[12058626] in b[:, 0]  # 买了 32567的用户中是否有  用户 12068626
     b = a.word2item(123950, False)  #
     print a.itemid_dict[32567] in b[:, 0]  # 词123950的商品中 是否有 32567
-    print time.time()
+    print time.time()-t1

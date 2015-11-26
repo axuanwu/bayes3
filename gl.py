@@ -6,7 +6,6 @@ import os
 dataDir = "E:\\gitshell\\tianchi3"
 userIdStart = 2000000  # 用户以2000000开始编号
 itemIDStart = 1000000  # 商品以1000000开始编号
-wordIdStart = 4000000
 itemClassWordFile = os.path.join(dataDir, "dim_items.txt")  # 商品的类别，词组信息文件
 BoughtHistoryFile = os.path.join(dataDir, "user_bought_history_o.txt")  # 购买记录
 user_item_array_file = os.path.join(dataDir, "information1.txt")  # 商品的类别，词组信息文件

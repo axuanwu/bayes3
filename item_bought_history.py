@@ -8,6 +8,7 @@ bar_mark 为True 表示 前面的id经过第二次映射
 1、该算法所搭配出来的商品全部限定在有购买历史的商品中
 """
 import time
+import pickle
 from information import known_information
 from class_opinion import class_gailv
 import numpy as np
@@ -22,7 +23,7 @@ class items(known_information):
         self.word_hot_pro = np.array([0.0] * 10)  # 每个词的出现概率
         self.class_id_bar = np.array([0.0] * 10)
         self.item_relate = np.array([0.0] * 10)  # 关联商品购买数
-        self.KNN_k = 500  # KNN的 k
+        self.KNN_k = 50  # KNN的 k
         self.weight_array = np.array([0]*10)
         self.my_range = 10
         self.class_information = class_gailv()
@@ -134,6 +135,7 @@ class items(known_information):
         if not bar_mark:
             item_id = self.itemid_dict[item_id]
         # step1：  获取类似产品
+        print 1,time.time()
         word_array = self.item2word(item_id, True)
         class_id = self.item2class(item_id, True)  # 原来的classid
         word_num = len(word_array)
@@ -143,8 +145,10 @@ class items(known_information):
         temp_class_array = self.class2itemArray(class_id, False)
         # temp_array.sum(0)  # 按照列求和
         temp_array2 = temp_array.sum(0)*temp_class_array  # 只看同类别的商品
+        if sum(temp_array2)==0:
+            temp_array2 = temp_array.sum(0)
         temp_max = temp_array2.max()
-        relate_item = np.ones((2000, 3), int)  # 第一列 item_id' 第二列 相似度 第三列 组别编码
+        relate_item = np.ones((2000, 3))  # 第一列 item_id' 第二列 相似度 第三列 组别编码
         i_relate_num = 0
         mark_array = np.exp2(np.arange(0, word_num))
         for i in xrange(0, self.item_num_history):
@@ -158,13 +162,16 @@ class items(known_information):
                 i_relate_num += 1
                 if i_relate_num == 1000:
                     break
-        relate_item = relate_item[:, 0:i_relate_num]
+        relate_item = relate_item[0:i_relate_num, :]
+        b = np.argmax(relate_item[:, 1])
+        relate_item = relate_item[relate_item[:,2]==relate_item[b,2], ]
         np.random.shuffle(relate_item)  # 随机排序
         a = np.argsort(relate_item[0:self.KNN_k, 2])  # 取 前 KNN_k个商品
         relate_item = relate_item[a, ]  # 按照词差异排序后取值
         #  获取分组数量
         group_num = len(set(relate_item[:, 2]))
         # step 2 ： 按照分组 找出关联商品
+        print 2,time.time()
         temp_relate_num = np.zeros((group_num, self.item_num_history))
         weight_group = np.array([0.0]*group_num)
         group_before = relate_item[0, 2]
@@ -174,9 +181,10 @@ class items(known_information):
             if group_before == relate_item[x, 2]:
                 continue
             else:
-                item_id_array = relate_item[x_start:x, 0]
+                item_id_array = np.array([1]*(x - x_start), int)
+                item_id_array[:] = relate_item[x_start:x, 0]
                 user_array = self.item2user(item_id_array, True)
-                for user_id in user_array:
+                for user_id in user_array[:, 0]:
                     item_array = self.user2item(user_id, True)
                     temp_relate_num[group_num_i, :] += self.count_relate_num(item_id_array, item_array, True)
                 weight_group[group_num_i] = relate_item[x_start, 1]
@@ -185,7 +193,7 @@ class items(known_information):
                 group_before = relate_item[x, 2]
         item_id_array = relate_item[x_start:, 0]
         user_array = self.item2user(item_id_array, True)
-        for user_id in user_array:
+        for user_id in user_array[:, 0]:
             item_array = self.user2item(user_id, True)
             temp_relate_num[group_num_i, :] += self.count_relate_num(item_id_array, item_array, True)
         weight_group[group_num_i] = relate_item[x_start, 1]
@@ -203,7 +211,7 @@ class items(known_information):
         w_stream = open(gl.resultFile, 'w')
         w_stream.close()
         for line in r_stream:
-            print line, time.time()
+            print line.strip(), time.time()
             my_str1 = line.strip().split('\t')
             item_id = int(my_str1[-1])
             item_id_bar = self.itemid_dict[item_id]
@@ -231,7 +239,29 @@ class items(known_information):
             w_stream.close()
 
 if __name__ == "__main__":
-    a = items()    
-    a.set_information()
+    t1 = time.time()
+    if False:
+        a = items()
+        a.set_information()
+        a.save_history()
+        f = open(gl.pickle_file, 'wb')
+        pick = pickle.Pickler(f)
+        pick.dump(a)
+        f.close()
+        del a
+        del pick
+    f = open(gl.pickle_file, 'rb')
+    pick = pickle.Unpickler(f)
+    a = pick.load()
+    f.close()
+    del pick
+    a.load_history()
     print 1,time.time()
+    b = a.user2item(12058626, False)
+    print a.itemid_dict[32567] in b[:, 0]  # 12068626 买的商品中是否有 32567
+    b = a.item2user(32567, False)
+    print a.userid_dict[12058626] in b[:, 0]  # 买了 32567的用户中是否有  用户 12068626
+    b = a.word2item(123950, False)  #
+    print a.itemid_dict[32567] in b[:, 0]  # 词123950的商品中 是否有 32567
+    print time.time()-t1
     a.dafen()
